@@ -1,5 +1,8 @@
 # MnemeBrain Lite
 
+[![GitHub Release](https://img.shields.io/github/v/release/mnemebrain/mnemebrain-lite)](https://github.com/mnemebrain/mnemebrain-lite/releases)
+[![codecov](https://codecov.io/gh/mnemebrain/mnemebrain-lite/graph/badge.svg)](https://codecov.io/gh/mnemebrain/mnemebrain-lite)
+
 Give your AI a real brain.
 
 Agents today store text. Mnemebrain stores beliefs — with evidence, confidence, provenance, and revision logic.
@@ -33,6 +36,8 @@ Beliefs carry evidence, confidence, provenance, and causal justification. The sy
 ## Quick Start
 
 ```bash
+pip install mnemebrain-lite
+
 # Full install (Linux / Apple Silicon)
 uv sync --extra dev --extra embeddings
 
