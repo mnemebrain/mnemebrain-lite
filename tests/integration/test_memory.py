@@ -6,6 +6,10 @@ import tempfile
 
 import pytest
 
+from mnemebrain_core.memory import BeliefMemory
+from mnemebrain_core.models import BeliefType, TruthState
+from mnemebrain_core.providers.base import EvidenceInput
+
 try:
     import sentence_transformers  # noqa: F401
 
@@ -17,10 +21,6 @@ pytestmark = [
     pytest.mark.integration,
     pytest.mark.skipif(not HAS_EMBEDDINGS, reason="sentence-transformers not installed"),
 ]
-
-from mnemebrain_core.memory import BeliefMemory
-from mnemebrain_core.models import BeliefType, TruthState
-from mnemebrain_core.providers.base import EvidenceInput
 
 
 @pytest.fixture

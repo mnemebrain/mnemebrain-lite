@@ -5,6 +5,9 @@ import shutil
 import tempfile
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+
+from mnemebrain_core.api.app import create_app
 
 try:
     import sentence_transformers  # noqa: F401
@@ -17,10 +20,6 @@ pytestmark = [
     pytest.mark.e2e,
     pytest.mark.skipif(not HAS_EMBEDDINGS, reason="sentence-transformers not installed"),
 ]
-
-from httpx import ASGITransport, AsyncClient
-
-from mnemebrain_core.api.app import create_app
 
 
 @pytest.fixture
