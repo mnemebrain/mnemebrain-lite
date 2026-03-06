@@ -22,7 +22,9 @@ def create_app(db_path: str = "./mnemebrain_data") -> FastAPI:
     app.include_router(router)
 
     @app.exception_handler(ImportError)
-    async def handle_missing_embeddings(_request: Request, exc: ImportError) -> JSONResponse:
+    async def handle_missing_embeddings(
+        _request: Request, exc: ImportError
+    ) -> JSONResponse:
         return JSONResponse(
             status_code=501,
             content={"detail": str(exc)},

@@ -18,7 +18,9 @@ except ImportError:
 
 pytestmark = [
     pytest.mark.e2e,
-    pytest.mark.skipif(not HAS_EMBEDDINGS, reason="sentence-transformers not installed"),
+    pytest.mark.skipif(
+        not HAS_EMBEDDINGS, reason="sentence-transformers not installed"
+    ),
 ]
 
 
