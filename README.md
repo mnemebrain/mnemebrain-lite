@@ -64,7 +64,7 @@ curl -X POST http://localhost:8000/believe \
 curl "http://localhost:8000/explain?claim=user+is+vegetarian"
 
 # Retract evidence
-curl -X POST http://localhost:8000/retract \
+curl -X POST http://localhost:8000/retract \Ru
   -H "Content-Type: application/json" \
   -d '{"evidence_id": "<uuid>"}'
 
