@@ -33,8 +33,8 @@ Beliefs carry evidence, confidence, provenance, and causal justification. The sy
 ## Quick Start
 
 ```bash
-# Install
-uv sync --extra dev
+# Install (dev + embeddings needed for tests)
+uv sync --extra dev --extra embeddings
 
 # Run tests
 uv run pytest tests/ -v
