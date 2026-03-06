@@ -1,4 +1,5 @@
 """BeliefMemory — the 4 core operations for belief management."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -47,6 +48,7 @@ class BeliefMemory:
             from mnemebrain_core.providers.embeddings.sentence_transformers import (
                 SentenceTransformerProvider,
             )
+
             self._embedder = SentenceTransformerProvider()
 
     def believe(
@@ -115,9 +117,7 @@ class BeliefMemory:
             belief.truth_state = compute_truth_state(
                 belief.evidence, belief.belief_type
             )
-            belief.confidence = compute_confidence(
-                belief.evidence, belief.belief_type
-            )
+            belief.confidence = compute_confidence(belief.evidence, belief.belief_type)
             belief.last_revised = datetime.now(timezone.utc)
             self._store.upsert(belief)
 
@@ -155,9 +155,7 @@ class BeliefMemory:
             expired=expired,
         )
 
-    def revise(
-        self, belief_id: UUID, new_evidence: EvidenceInput
-    ) -> BeliefResult:
+    def revise(self, belief_id: UUID, new_evidence: EvidenceInput) -> BeliefResult:
         """Add new evidence to an existing belief and recompute."""
         belief = self._store.get(belief_id)
         if belief is None:

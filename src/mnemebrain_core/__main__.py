@@ -1,4 +1,5 @@
 """CLI entry point — run the MnemeBrain API server."""
+
 import sys
 
 

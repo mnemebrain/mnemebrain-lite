@@ -1,13 +1,13 @@
 """Core data models for MnemeBrain belief memory system."""
+
 from __future__ import annotations
 
-import math
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class TruthState(str, Enum):
@@ -60,9 +60,7 @@ class Evidence(BaseModel):
     weight: float = Field(ge=0.0, le=1.0)
     time_validity: datetime | None = None
     scope: str | None = None
-    timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     valid: bool = True
 
     model_config = {"frozen": False}
@@ -79,12 +77,8 @@ class Belief(BaseModel):
     tags: list[str] = Field(default_factory=list)
     qualifiers: dict[str, Any] = Field(default_factory=dict)
     source_agent: str = ""
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
-    last_revised: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_revised: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     evidence: list[Evidence] = Field(default_factory=list)
 
     model_config = {"frozen": False}

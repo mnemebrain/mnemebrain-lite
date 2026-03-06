@@ -1,6 +1,6 @@
 """Tests for MnemeBrain data models."""
-import math
-from datetime import datetime, timezone
+
+from datetime import datetime
 from uuid import UUID
 
 import pytest

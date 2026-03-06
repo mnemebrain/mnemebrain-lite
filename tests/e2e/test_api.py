@@ -1,4 +1,5 @@
 """End-to-end tests for the REST API."""
+
 import os
 import shutil
 import tempfile
@@ -178,9 +179,7 @@ class TestRetractEndpoint:
         evidence_id = explain_resp.json()["supporting"][0]["id"]
 
         # Retract
-        resp = await client.post(
-            "/retract", json={"evidence_id": evidence_id}
-        )
+        resp = await client.post("/retract", json={"evidence_id": evidence_id})
         assert resp.status_code == 200
 
 
@@ -236,9 +235,7 @@ class TestFullWorkflow:
 
         # 4. Retract the attacking evidence
         attacking_id = data["attacking"][0]["id"]
-        r4 = await client.post(
-            "/retract", json={"evidence_id": attacking_id}
-        )
+        r4 = await client.post("/retract", json={"evidence_id": attacking_id})
         assert r4.status_code == 200
 
         # 5. Verify conflict resolved

@@ -1,4 +1,5 @@
 """Kuzu embedded graph store for beliefs and evidence."""
+
 from __future__ import annotations
 
 import json
@@ -48,8 +49,7 @@ class KuzuGraphStore:
         emb = embedding if embedding else []
 
         self._conn.execute(
-            "MERGE (b:Belief {id: $id}) "
-            "SET b.data = $data, b.embedding = $embedding",
+            "MERGE (b:Belief {id: $id}) SET b.data = $data, b.embedding = $embedding",
             parameters={"id": bid, "data": data_json, "embedding": emb},
         )
 
@@ -110,8 +110,7 @@ class KuzuGraphStore:
     def find_beliefs_using(self, evidence_id: UUID) -> list[Belief]:
         """Find all beliefs that reference a given evidence item."""
         result = self._conn.execute(
-            "MATCH (b:Belief)-[:HAS_EVIDENCE]->(e:EvidenceNode {id: $eid}) "
-            "RETURN b.id",
+            "MATCH (b:Belief)-[:HAS_EVIDENCE]->(e:EvidenceNode {id: $eid}) RETURN b.id",
             parameters={"eid": str(evidence_id)},
         )
         beliefs = []
@@ -127,8 +126,7 @@ class KuzuGraphStore:
     ) -> list[Belief]:
         """Find beliefs with similar embeddings using cosine similarity."""
         result = self._conn.execute(
-            "MATCH (b:Belief) WHERE size(b.embedding) > 0 "
-            "RETURN b.id, b.embedding"
+            "MATCH (b:Belief) WHERE size(b.embedding) > 0 RETURN b.id, b.embedding"
         )
         matches = []
         query_vec = np.array(embedding)

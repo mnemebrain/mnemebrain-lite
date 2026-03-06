@@ -1,4 +1,5 @@
 """Integration tests for BeliefMemory — requires Kuzu DB and embeddings."""
+
 import os
 import shutil
 import tempfile
@@ -184,7 +185,7 @@ class TestRevise:
 @pytest.mark.integration
 class TestRetract:
     def test_retract_removes_evidence_effect(self, memory: BeliefMemory):
-        result = memory.believe(
+        memory.believe(
             claim="user likes pizza",
             evidence_items=[
                 EvidenceInput(

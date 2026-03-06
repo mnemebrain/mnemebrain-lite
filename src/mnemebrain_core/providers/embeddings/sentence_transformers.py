@@ -1,4 +1,5 @@
 """Sentence-transformers embedding provider — local, free, no API key."""
+
 from __future__ import annotations
 
 import numpy as np

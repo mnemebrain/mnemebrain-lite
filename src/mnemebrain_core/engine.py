@@ -2,6 +2,7 @@
 
 All computation is stateless. Nothing is mutated. Evidence is read, never modified.
 """
+
 from __future__ import annotations
 
 import math
@@ -73,9 +74,7 @@ def compute_truth_state(
     return TruthState.NEITHER
 
 
-def compute_confidence(
-    evidence: list[Evidence], belief_type: BeliefType
-) -> float:
+def compute_confidence(evidence: list[Evidence], belief_type: BeliefType) -> float:
     """Compute confidence as derived ranking output — log-odds with sigmoid.
 
     Confidence is used only for ranking, not as ground truth.

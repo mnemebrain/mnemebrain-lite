@@ -1,5 +1,5 @@
 """Tests for KuzuGraphStore — covers uncovered branches."""
-import json
+
 import os
 import shutil
 import tempfile
@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import pytest
 
-from mnemebrain_core.models import Belief, BeliefType, Evidence, Polarity
+from mnemebrain_core.models import Belief, Evidence, Polarity
 from mnemebrain_core.store import KuzuGraphStore
 
 

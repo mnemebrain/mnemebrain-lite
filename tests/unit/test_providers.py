@@ -1,5 +1,5 @@
 """Tests for embedding providers — covers similarity method."""
-import numpy as np
+
 import pytest
 
 from mnemebrain_core.providers.embeddings.sentence_transformers import (

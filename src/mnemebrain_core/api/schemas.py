@@ -1,7 +1,7 @@
 """Request/response schemas for the REST API."""
+
 from __future__ import annotations
 
-from uuid import UUID
 
 from pydantic import BaseModel, Field
 

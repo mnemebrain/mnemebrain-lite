@@ -1,18 +1,20 @@
 """Tests for TruthState computation engine — pure functions."""
-import math
+
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
 
-from mnemebrain_core.engine import compute_confidence, compute_truth_state, effective_weight
+from mnemebrain_core.engine import (
+    compute_confidence,
+    compute_truth_state,
+    effective_weight,
+)
 from mnemebrain_core.models import (
     BeliefType,
     Evidence,
     Polarity,
     TruthState,
-    SUPPORT_THRESHOLD,
-    ATTACK_THRESHOLD,
 )
 
 
@@ -49,9 +51,7 @@ class TestEffectiveWeight:
         assert effective_weight(e, BeliefType.INFERENCE) == 0.0
 
     def test_expired_evidence_returns_zero(self):
-        e = _evidence(
-            time_validity=datetime.now(timezone.utc) - timedelta(hours=1)
-        )
+        e = _evidence(time_validity=datetime.now(timezone.utc) - timedelta(hours=1))
         assert effective_weight(e, BeliefType.INFERENCE) == 0.0
 
     def test_fact_decays_slowly(self):
@@ -97,16 +97,22 @@ class TestComputeTruthState:
 
     def test_invalid_evidence_ignored(self):
         evidence = [
-            _evidence(polarity=Polarity.SUPPORTS, weight=0.8, reliability=0.9, valid=False),
+            _evidence(
+                polarity=Polarity.SUPPORTS, weight=0.8, reliability=0.9, valid=False
+            ),
         ]
         assert compute_truth_state(evidence, BeliefType.INFERENCE) == TruthState.NEITHER
 
     def test_decayed_prediction_becomes_neither(self):
         evidence = [
-            _evidence(polarity=Polarity.SUPPORTS, weight=0.5, reliability=0.7, days_old=30),
+            _evidence(
+                polarity=Polarity.SUPPORTS, weight=0.5, reliability=0.7, days_old=30
+            ),
         ]
         # Prediction half-life is 3 days — after 30 days, ~10 half-lives, weight ~ 0
-        assert compute_truth_state(evidence, BeliefType.PREDICTION) == TruthState.NEITHER
+        assert (
+            compute_truth_state(evidence, BeliefType.PREDICTION) == TruthState.NEITHER
+        )
 
 
 class TestComputeConfidence:

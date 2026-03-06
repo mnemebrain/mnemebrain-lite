@@ -1,4 +1,5 @@
 """Tests for uncovered route branches."""
+
 import pytest
 
 from mnemebrain_core.api.routes import get_memory, set_memory
