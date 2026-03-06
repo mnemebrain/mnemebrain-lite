@@ -7,7 +7,7 @@ from __future__ import annotations
 import math
 from datetime import datetime, timezone
 
-from mnemebrain.models import (
+from mnemebrain_core.models import (
     ATTACK_THRESHOLD,
     DECAY_HALFLIFE,
     SUPPORT_THRESHOLD,

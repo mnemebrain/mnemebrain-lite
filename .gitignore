@@ -223,3 +223,6 @@ __marimo__/
 CLAUDE.md
 CLAUDE.*.md
 
+# database files
+mnemebrain_data
+

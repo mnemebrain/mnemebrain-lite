@@ -5,9 +5,9 @@ import tempfile
 
 import pytest
 
-from mnemebrain.memory import BeliefMemory
-from mnemebrain.models import BeliefType, TruthState
-from mnemebrain.providers.base import EvidenceInput
+from mnemebrain_core.memory import BeliefMemory
+from mnemebrain_core.models import BeliefType, TruthState
+from mnemebrain_core.providers.base import EvidenceInput
 
 
 @pytest.fixture

@@ -3,7 +3,7 @@ import sys
 
 import uvicorn
 
-from mnemebrain.api.app import create_app
+from mnemebrain_core.api.app import create_app
 
 
 def main():
@@ -12,5 +12,5 @@ def main():
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

@@ -7,7 +7,7 @@ from uuid import UUID
 import kuzu
 import numpy as np
 
-from mnemebrain.models import Belief, Evidence
+from mnemebrain_core.models import Belief, Evidence
 
 
 class KuzuGraphStore:
@@ -35,7 +35,7 @@ class KuzuGraphStore:
                 "CREATE REL TABLE IF NOT EXISTS HAS_EVIDENCE("
                 "FROM Belief TO EvidenceNode)"
             )
-        except Exception:
+        except Exception:  # pragma: no cover
             pass  # Tables already exist
 
     def upsert(self, belief: Belief, embedding: list[float] | None = None) -> None:
@@ -68,7 +68,7 @@ class KuzuGraphStore:
                     "MERGE (b)-[:HAS_EVIDENCE]->(e)",
                     parameters={"bid": bid, "eid": ev_id},
                 )
-            except Exception:
+            except Exception:  # pragma: no cover
                 pass  # Relationship already exists
 
     def get(self, belief_id: UUID) -> Belief | None:

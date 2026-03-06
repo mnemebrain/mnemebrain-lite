@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from mnemebrain.api.routes import router, set_memory
-from mnemebrain.memory import BeliefMemory
+from mnemebrain_core.api.routes import router, set_memory
+from mnemebrain_core.memory import BeliefMemory
 
 
 def create_app(db_path: str = "./mnemebrain_data") -> FastAPI:

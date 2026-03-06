@@ -5,8 +5,8 @@ from uuid import uuid4
 
 import pytest
 
-from mnemebrain.engine import compute_confidence, compute_truth_state, effective_weight
-from mnemebrain.models import (
+from mnemebrain_core.engine import compute_confidence, compute_truth_state, effective_weight
+from mnemebrain_core.models import (
     BeliefType,
     Evidence,
     Polarity,

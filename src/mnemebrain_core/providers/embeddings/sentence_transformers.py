@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-from mnemebrain.providers.base import EmbeddingProvider
+from mnemebrain_core.providers.base import EmbeddingProvider
 
 _DEFAULT_MODEL = "all-MiniLM-L6-v2"
 

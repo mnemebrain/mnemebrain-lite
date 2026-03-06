@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
 
-from mnemebrain.api.schemas import (
+from mnemebrain_core.api.schemas import (
     BeliefResponse,
     BelieveRequest,
     EvidenceResponse,
@@ -13,9 +13,9 @@ from mnemebrain.api.schemas import (
     RetractRequest,
     ReviseRequest,
 )
-from mnemebrain.memory import BeliefMemory
-from mnemebrain.models import BeliefType
-from mnemebrain.providers.base import EvidenceInput
+from mnemebrain_core.memory import BeliefMemory
+from mnemebrain_core.models import BeliefType
+from mnemebrain_core.providers.base import EvidenceInput
 
 router = APIRouter()
 

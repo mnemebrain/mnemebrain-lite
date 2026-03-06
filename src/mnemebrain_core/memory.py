@@ -5,10 +5,10 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import UUID
 
-from mnemebrain.engine import compute_confidence, compute_truth_state
-from mnemebrain.models import Belief, BeliefType, Evidence, Polarity, TruthState
-from mnemebrain.providers.base import EmbeddingProvider, EvidenceInput
-from mnemebrain.store import KuzuGraphStore
+from mnemebrain_core.engine import compute_confidence, compute_truth_state
+from mnemebrain_core.models import Belief, BeliefType, Evidence, Polarity, TruthState
+from mnemebrain_core.providers.base import EmbeddingProvider, EvidenceInput
+from mnemebrain_core.store import KuzuGraphStore
 
 
 @dataclass
@@ -44,7 +44,7 @@ class BeliefMemory:
         self._store = KuzuGraphStore(db_path)
         self._embedder = embedding_provider
         if self._embedder is None:
-            from mnemebrain.providers.embeddings.sentence_transformers import (
+            from mnemebrain_core.providers.embeddings.sentence_transformers import (
                 SentenceTransformerProvider,
             )
             self._embedder = SentenceTransformerProvider()

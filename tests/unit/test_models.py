@@ -5,7 +5,7 @@ from uuid import UUID
 
 import pytest
 
-from mnemebrain.models import (
+from mnemebrain_core.models import (
     Belief,
     BeliefType,
     Evidence,

@@ -6,7 +6,7 @@ import tempfile
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from mnemebrain.api.app import create_app
+from mnemebrain_core.api.app import create_app
 
 
 @pytest.fixture
