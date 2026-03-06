@@ -225,4 +225,5 @@ CLAUDE.*.md
 
 # database files
 mnemebrain_data
+*.wal
 

@@ -45,11 +45,22 @@ class BeliefMemory:
         self._store = KuzuGraphStore(db_path)
         self._embedder = embedding_provider
         if self._embedder is None:
-            from mnemebrain_core.providers.embeddings.sentence_transformers import (
-                SentenceTransformerProvider,
-            )
+            try:
+                from mnemebrain_core.providers.embeddings.sentence_transformers import (
+                    SentenceTransformerProvider,
+                )
 
-            self._embedder = SentenceTransformerProvider()
+                self._embedder = SentenceTransformerProvider()
+            except ImportError:
+                self._embedder = None  # Will fail at use-time with clear message
+
+    def _get_embedder(self) -> EmbeddingProvider:
+        if self._embedder is None:
+            raise ImportError(
+                "No embedding provider available. "
+                "Install with: pip install mnemebrain-lite[embeddings]"
+            )
+        return self._embedder
 
     def believe(
         self,
@@ -60,7 +71,7 @@ class BeliefMemory:
         source_agent: str = "",
     ) -> BeliefResult:
         """Store a new belief with evidence. Merges if similar belief exists."""
-        embedding = self._embedder.embed(claim)
+        embedding = self._get_embedder().embed(claim)
         existing = self._store.find_similar(embedding, threshold=0.92)
 
         if existing:
@@ -133,7 +144,7 @@ class BeliefMemory:
 
     def explain(self, claim: str) -> ExplanationResult | None:
         """Return full justification chain for a belief."""
-        embedding = self._embedder.embed(claim)
+        embedding = self._get_embedder().embed(claim)
         matches = self._store.find_similar(embedding, threshold=0.8)
 
         if not matches:

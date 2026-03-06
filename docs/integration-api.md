@@ -6,13 +6,21 @@
 
 MnemeBrain Lite is a lightweight belief memory system for LLM agents. It provides four core operations — **believe**, **retract**, **explain**, **revise** — backed by Belnap's four-valued logic and an append-only evidence ledger.
 
+> **Lite mode:** On platforms where `sentence-transformers` is unavailable (e.g. Intel Mac — torch 2.3+ has no x86_64 wheels), `believe` and `explain` require a custom `EmbeddingProvider`. Without one, these endpoints return **501 Not Implemented**. `health`, `retract`, and `revise` always work.
+
 ---
 
 ## Quick Start
 
 ```bash
+# Full install (Linux / Apple Silicon)
+uv sync --extra dev --extra embeddings
+
+# Lite install (Intel Mac — no embeddings)
+uv sync --extra dev
+
 # Start the server
-python -m mnemebrain [DB_PATH]
+uv run python -m mnemebrain_core [DB_PATH]
 # Default DB_PATH: ./mnemebrain_data
 # Listens on 0.0.0.0:8000
 ```
@@ -20,30 +28,10 @@ python -m mnemebrain [DB_PATH]
 ## Python API
 
 ```python
-from mnemebrain.memory import BeliefMemory
-from mnemebrain.providers.base import EvidenceInput
+from mnemebrain_core.memory import BeliefMemory
+from mnemebrain_core.providers.base import EvidenceInput
 
 mem = BeliefMemory(db_path="./my_data")
-
-# Store a belief
-result = mem.believe(
-    claim="Python 3.12 supports type parameter syntax",
-    evidence_items=[
-        EvidenceInput(
-            source_ref="pep-695",
-            content="PEP 695 introduces type parameter syntax",
-            polarity="supports",
-            weight=0.9,
-            reliability=0.95,
-        )
-    ],
-    belief_type="fact",
-    tags=["python", "typing"],
-    source_agent="research-agent",
-)
-
-# Explain a belief
-explanation = mem.explain("Python 3.12 supports type parameter syntax")
 
 # Revise with new evidence
 mem.revise(
@@ -67,7 +55,7 @@ mem.retract(evidence_id=some_evidence_uuid)
 
 ### `GET /health`
 
-Health check.
+Health check. Always available.
 
 **Response:**
 ```json
@@ -76,66 +64,9 @@ Health check.
 
 ---
 
-### `POST /believe`
-
-Store a belief with one or more evidence items. If a semantically similar belief exists (cosine similarity >= 0.92), evidence is merged into the existing belief.
-
-**Request Body:**
-
-| Field          | Type               | Required | Default       | Description                                        |
-|----------------|--------------------|----------|---------------|----------------------------------------------------|
-| `claim`        | `string`           | Yes      |               | Natural language claim                             |
-| `evidence`     | `EvidenceInput[]`  | Yes      |               | One or more evidence items                         |
-| `belief_type`  | `string`           | No       | `"inference"` | One of: `fact`, `preference`, `inference`, `prediction` |
-| `tags`         | `string[]`         | No       | `[]`          | Arbitrary tags for filtering                       |
-| `source_agent` | `string`           | No       | `""`          | Agent that produced this belief                    |
-
-**EvidenceInput:**
-
-| Field         | Type             | Required | Default | Description                        |
-|---------------|------------------|----------|---------|------------------------------------|
-| `source_ref`  | `string`         | Yes      |         | Source identifier (URL, doc name)  |
-| `content`     | `string`         | Yes      |         | Evidence text                      |
-| `polarity`    | `string`         | Yes      |         | `"supports"` or `"attacks"`        |
-| `weight`      | `float` (0–1)    | No       | `0.7`   | Evidence strength                  |
-| `reliability` | `float` (0–1)    | No       | `0.8`   | Source reliability                 |
-| `scope`       | `string \| null` | No       | `null`  | Scope qualifier                    |
-
-**Response:** `BeliefResponse`
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "truth_state": "true",
-  "confidence": 0.82,
-  "conflict": false
-}
-```
-
-**Example:**
-
-```bash
-curl -X POST http://localhost:8000/believe \
-  -H "Content-Type: application/json" \
-  -d '{
-    "claim": "Earth orbits the Sun",
-    "evidence": [{
-      "source_ref": "astronomy-textbook",
-      "content": "Confirmed by centuries of observation",
-      "polarity": "supports",
-      "weight": 0.95,
-      "reliability": 1.0
-    }],
-    "belief_type": "fact",
-    "tags": ["astronomy"]
-  }'
-```
-
----
-
 ### `POST /retract`
 
-Invalidate a piece of evidence by its ID. Recomputes truth state and confidence for all affected beliefs.
+Invalidate a piece of evidence by its ID. Recomputes truth state and confidence for all affected beliefs. Always available.
 
 **Request Body:**
 
@@ -166,53 +97,9 @@ curl -X POST http://localhost:8000/retract \
 
 ---
 
-### `GET /explain`
-
-Return the full justification chain for a belief. Finds beliefs by semantic similarity (threshold >= 0.8) or exact claim match.
-
-**Query Parameters:**
-
-| Param   | Type     | Required | Description           |
-|---------|----------|----------|-----------------------|
-| `claim` | `string` | Yes      | Claim to look up      |
-
-**Response:** `ExplanationResponse`
-
-```json
-{
-  "claim": "Earth orbits the Sun",
-  "truth_state": "true",
-  "confidence": 0.82,
-  "supporting": [
-    {
-      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
-      "source_ref": "astronomy-textbook",
-      "content": "Confirmed by centuries of observation",
-      "polarity": "supports",
-      "weight": 0.95,
-      "reliability": 1.0,
-      "scope": null
-    }
-  ],
-  "attacking": [],
-  "expired": []
-}
-```
-
-**Errors:**
-- `404` — No matching belief found.
-
-**Example:**
-
-```bash
-curl "http://localhost:8000/explain?claim=Earth%20orbits%20the%20Sun"
-```
-
----
-
 ### `POST /revise`
 
-Add new evidence to an existing belief and recompute its truth state and confidence.
+Add new evidence to an existing belief and recompute its truth state and confidence. Always available.
 
 **Request Body:**
 
@@ -251,6 +138,112 @@ curl -X POST http://localhost:8000/revise \
 
 ---
 
+### `POST /believe` (requires embeddings)
+
+Store a belief with one or more evidence items. If a semantically similar belief exists (cosine similarity >= 0.92), evidence is merged into the existing belief.
+
+Returns **501 Not Implemented** when no embedding provider is available.
+
+**Request Body:**
+
+| Field          | Type               | Required | Default       | Description                                        |
+|----------------|--------------------|----------|---------------|----------------------------------------------------|
+| `claim`        | `string`           | Yes      |               | Natural language claim                             |
+| `evidence`     | `EvidenceInput[]`  | Yes      |               | One or more evidence items                         |
+| `belief_type`  | `string`           | No       | `"inference"` | One of: `fact`, `preference`, `inference`, `prediction` |
+| `tags`         | `string[]`         | No       | `[]`          | Arbitrary tags for filtering                       |
+| `source_agent` | `string`           | No       | `""`          | Agent that produced this belief                    |
+
+**EvidenceInput:**
+
+| Field         | Type             | Required | Default | Description                        |
+|---------------|------------------|----------|---------|------------------------------------|
+| `source_ref`  | `string`         | Yes      |         | Source identifier (URL, doc name)  |
+| `content`     | `string`         | Yes      |         | Evidence text                      |
+| `polarity`    | `string`         | Yes      |         | `"supports"` or `"attacks"`        |
+| `weight`      | `float` (0-1)    | No       | `0.7`   | Evidence strength                  |
+| `reliability` | `float` (0-1)    | No       | `0.8`   | Source reliability                 |
+| `scope`       | `string \| null` | No       | `null`  | Scope qualifier                    |
+
+**Response:** `BeliefResponse`
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "truth_state": "true",
+  "confidence": 0.82,
+  "conflict": false
+}
+```
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8000/believe \
+  -H "Content-Type: application/json" \
+  -d '{
+    "claim": "Earth orbits the Sun",
+    "evidence": [{
+      "source_ref": "astronomy-textbook",
+      "content": "Confirmed by centuries of observation",
+      "polarity": "supports",
+      "weight": 0.95,
+      "reliability": 1.0
+    }],
+    "belief_type": "fact",
+    "tags": ["astronomy"]
+  }'
+```
+
+---
+
+### `GET /explain` (requires embeddings)
+
+Return the full justification chain for a belief. Finds beliefs by semantic similarity (threshold >= 0.8) or exact claim match.
+
+Returns **501 Not Implemented** when no embedding provider is available.
+
+**Query Parameters:**
+
+| Param   | Type     | Required | Description           |
+|---------|----------|----------|-----------------------|
+| `claim` | `string` | Yes      | Claim to look up      |
+
+**Response:** `ExplanationResponse`
+
+```json
+{
+  "claim": "Earth orbits the Sun",
+  "truth_state": "true",
+  "confidence": 0.82,
+  "supporting": [
+    {
+      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "source_ref": "astronomy-textbook",
+      "content": "Confirmed by centuries of observation",
+      "polarity": "supports",
+      "weight": 0.95,
+      "reliability": 1.0,
+      "scope": null
+    }
+  ],
+  "attacking": [],
+  "expired": []
+}
+```
+
+**Errors:**
+- `404` — No matching belief found.
+- `501` — No embedding provider available.
+
+**Example:**
+
+```bash
+curl "http://localhost:8000/explain?claim=Earth%20orbits%20the%20Sun"
+```
+
+---
+
 ## Data Model
 
 ### Truth States (Belnap's Four-Valued Logic)
@@ -277,7 +270,7 @@ Confidence is a **ranking signal** computed via log-odds with sigmoid, not a pro
 
 ### Deduplication
 
-Claims are deduplicated via embedding similarity. When a new claim has cosine similarity >= 0.92 with an existing belief, evidence is merged into the existing belief rather than creating a new one.
+Claims are deduplicated via embedding similarity. When a new claim has cosine similarity >= 0.92 with an existing belief, evidence is merged into the existing belief rather than creating a new one. Requires embeddings.
 
 ### Thresholds
 
@@ -292,16 +285,30 @@ Claims are deduplicated via embedding similarity. When a new claim has cosine si
 
 MnemeBrain Lite uses **sentence-transformers** with the `all-MiniLM-L6-v2` model by default. No API keys required — runs locally.
 
+On platforms where `sentence-transformers` is unavailable, you can provide a custom `EmbeddingProvider`:
+
+```python
+from mnemebrain_core.providers.base import EmbeddingProvider
+
+class MyProvider(EmbeddingProvider):
+    def embed(self, text: str) -> list[float]:
+        # Your embedding logic here
+        ...
+
+mem = BeliefMemory(db_path="./data", embedding_provider=MyProvider())
+```
+
 ## Architecture
 
 ```
-Client → FastAPI → BeliefMemory → KuzuGraphStore (embedded graph DB)
-                        ↓
-                  Truth Engine (pure functions)
-                        ↓
-                  EmbeddingProvider (sentence-transformers)
+Client -> FastAPI -> BeliefMemory -> KuzuGraphStore (embedded graph DB)
+                         |
+                   Truth Engine (pure functions)
+                         |
+                   EmbeddingProvider (optional)
 ```
 
 - **Append-only evidence ledger** — evidence is never deleted, only invalidated
 - **Kuzu embedded graph DB** — stores beliefs, evidence, and embeddings
 - **Stateless computation** — truth states and confidence recomputed from evidence on every mutation
+- **Graceful degradation** — retract and revise work without embeddings; believe and explain require them
