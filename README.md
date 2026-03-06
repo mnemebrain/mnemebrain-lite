@@ -1,6 +1,8 @@
 # MnemeBrain Lite
 
-Biological belief memory for LLM agents.
+Give your AI a real brain.
+
+Agents today store text. Mnemebrain stores beliefs — with evidence, confidence, provenance, and revision logic.
 
 Beliefs carry evidence, confidence, provenance, and causal justification. The system can explain, retract, and revise — unlike flat key-value agent memory.
 
