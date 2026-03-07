@@ -7,7 +7,7 @@ def main():
     try:
         import uvicorn
     except ImportError:
-        print("API dependencies not installed. Run: pip install mnemebrain-lite[api]")
+        print("API dependencies not installed. Run: uv pip install -e '../mnemebrain-lite[api]'")
         sys.exit(1)
 
     from mnemebrain_core.api.app import create_app
