@@ -47,14 +47,30 @@ class BeliefMemory:
         self._store = KuzuGraphStore(db_path)
         self._embedder = embedding_provider
         if self._embedder is None:
-            try:
-                from mnemebrain_core.providers.embeddings.sentence_transformers import (
-                    SentenceTransformerProvider,
-                )
+            self._embedder = self._auto_detect_embedder()
 
-                self._embedder = SentenceTransformerProvider()
-            except ImportError:
-                self._embedder = None  # Will fail at use-time with clear message
+    @staticmethod
+    def _auto_detect_embedder() -> EmbeddingProvider | None:
+        """Try available embedding providers in order of preference."""
+        # 1. Local sentence-transformers (no API key needed)
+        try:
+            from mnemebrain_core.providers.embeddings.sentence_transformers import (
+                SentenceTransformerProvider,
+            )
+            return SentenceTransformerProvider()
+        except ImportError:
+            pass
+        # 2. OpenAI API (requires OPENAI_API_KEY)
+        try:
+            import os
+            if os.environ.get("OPENAI_API_KEY"):
+                from mnemebrain_core.providers.embeddings.openai import (
+                    OpenAIEmbeddingProvider,
+                )
+                return OpenAIEmbeddingProvider()
+        except ImportError:
+            pass
+        return None  # Will fail at use-time with clear message
 
     def _get_embedder(self) -> EmbeddingProvider:
         if self._embedder is None:

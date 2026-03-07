@@ -12,6 +12,11 @@ from mnemebrain_core.memory import BeliefMemory
 
 def create_app(db_path: str = "./mnemebrain_data") -> FastAPI:
     """Create FastAPI app with BeliefMemory."""
+    try:
+        from dotenv import find_dotenv, load_dotenv  # noqa: PLC0415
+        load_dotenv(find_dotenv(usecwd=True))
+    except ImportError:
+        pass
     app = FastAPI(
         title="MnemeBrain Lite",
         description="Biological belief memory for LLM agents",
