@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- OpenAI `text-embedding-3-small` embedding provider as fallback when sentence-transformers is unavailable
+- Auto-detection of embedding provider: tries sentence-transformers first, then OpenAI if `OPENAI_API_KEY` is set
+- `load_dotenv(usecwd=True)` so `.env` files are found when running via `python -m`
+
+### Fixed
+
+- Error message now references `uv pip` instead of bare `pip`
+
+### Docs
+
+- Reformat BMB section as competitive leaderboard with adapter invite
+- Add competing-systems invite and clarify 0% claim applies to contradiction detection
+
 ## [1.0.0a2] - 2026-03-07
 
 ### Added
@@ -16,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Belief listing endpoint (`GET /beliefs`) with filtering by truth state, belief type, tag, and confidence range
 - `ConflictPolicy` enum (surface, conservative, optimistic) for search result filtering
 - `rank_score()` and `apply_conflict_policy()` engine functions
+- Belief Maintenance Benchmark (BMB) module and runner for evaluating belief systems
+- CI coverage reporting and README badges
 
 ### Changed
 
