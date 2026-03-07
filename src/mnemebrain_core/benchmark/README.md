@@ -158,4 +158,6 @@ benchmark/
 
 ## Contributing
 
-We welcome external adapters and scenarios. See the project [CONTRIBUTING.md](../../../CONTRIBUTING.md) for guidelines. We publish all results, including systems that score higher than expected.
+We welcome adapters from competing memory systems — the benchmark is only credible if others can challenge the leaderboard. All tests are deterministic and all scoring is open-source. We publish every result, including systems that outscore ours.
+
+Submit a PR with your adapter or open an issue to discuss. See the project [CONTRIBUTING.md](../../../CONTRIBUTING.md) for guidelines.

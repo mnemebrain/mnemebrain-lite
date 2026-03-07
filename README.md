@@ -190,7 +190,7 @@ src/mnemebrain_core/
 
 ## BMB Leaderboard
 
-The **Belief Maintenance Benchmark** is an open benchmark for agent memory systems. 30 tasks, 5 categories — contradiction handling, temporal reasoning, retraction cascades, multi-hop inference, and confidence calibration.
+The **Belief Maintenance Benchmark** is an open benchmark for agent memory systems. 30 tasks, 5 categories — contradiction handling, temporal reasoning, retraction cascades, multi-hop inference, and confidence calibration. Every RAG-based system scored 0% on contradiction detection — they overwrite instead of tracking conflicting evidence.
 
 | System | Score |
 |--------|------:|
@@ -208,7 +208,7 @@ pip install mnemebrain-lite[embeddings]
 python run_bmb_benchmark.py --adapters your_adapter
 ```
 
-See [benchmark/README.md](src/mnemebrain_core/benchmark/README.md) for adapter docs and [BMB_REPORT.md](src/mnemebrain_core/benchmark/BMB_REPORT.md) for full results.
+We welcome adapters from competing systems. All tests are deterministic, all scoring is open-source, and we publish every result — including systems that outscore ours. See [benchmark/README.md](src/mnemebrain_core/benchmark/README.md) for adapter docs and [BMB_REPORT.md](src/mnemebrain_core/benchmark/BMB_REPORT.md) for full results.
 
 ## Tech Stack
 
