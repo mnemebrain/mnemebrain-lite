@@ -188,6 +188,25 @@ src/mnemebrain_core/
     └── schemas.py     # Request/response models
 ```
 
+## Belief Maintenance Benchmark (BMB)
+
+Open benchmark proving belief-graph memory outperforms flat memory systems. 30 tasks, 5 categories, 7 systems compared.
+
+```
+  mnemebrain           ████████████████████ 100%
+  structured_memory    ███████ 36%
+  mem0 (real API)      █████ 29%
+  openai_rag (real API) 0%
+  langchain_buffer      0%
+```
+
+```bash
+pip install mnemebrain-lite[embeddings]
+python run_bmb_benchmark.py
+```
+
+See [benchmark/README.md](src/mnemebrain_core/benchmark/README.md) and [benchmark/BMB_REPORT.md](src/mnemebrain_core/benchmark/BMB_REPORT.md) for full results and how to add your own adapter.
+
 ## Tech Stack
 
 Python 3.12+, uv, FastAPI, Kuzu, Pydantic v2, pytest, sentence-transformers (optional)
