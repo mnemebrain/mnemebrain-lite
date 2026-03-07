@@ -188,24 +188,27 @@ src/mnemebrain_core/
     └── schemas.py     # Request/response models
 ```
 
-## Belief Maintenance Benchmark (BMB)
+## BMB Leaderboard
 
-Open benchmark proving belief-graph memory outperforms flat memory systems. 30 tasks, 5 categories, 7 systems compared.
+The **Belief Maintenance Benchmark** is an open benchmark for agent memory systems. 30 tasks, 5 categories — contradiction handling, temporal reasoning, retraction cascades, multi-hop inference, and confidence calibration.
 
-```
-  mnemebrain           ████████████████████ 100%
-  structured_memory    ███████ 36%
-  mem0 (real API)      █████ 29%
-  openai_rag (real API) 0%
-  langchain_buffer      0%
-```
+| System | Score |
+|--------|------:|
+| MnemeBrain | **100%** |
+| Structured Memory | 36% |
+| Mem0 (API) | 29% |
+| RAG baseline | 0% |
+| OpenAI RAG (API) | 0% |
+| LangChain buffer | 0% |
+
+**Add your system.** Implement the [`MemorySystemAdapter`](src/mnemebrain_core/benchmark/interface.py) interface, drop it in `benchmark/adapters/`, and run:
 
 ```bash
 pip install mnemebrain-lite[embeddings]
-python run_bmb_benchmark.py
+python run_bmb_benchmark.py --adapters your_adapter
 ```
 
-See [benchmark/README.md](src/mnemebrain_core/benchmark/README.md) and [benchmark/BMB_REPORT.md](src/mnemebrain_core/benchmark/BMB_REPORT.md) for full results and how to add your own adapter.
+See [benchmark/README.md](src/mnemebrain_core/benchmark/README.md) for adapter docs and [BMB_REPORT.md](src/mnemebrain_core/benchmark/BMB_REPORT.md) for full results.
 
 ## Tech Stack
 
