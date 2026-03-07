@@ -8,7 +8,7 @@ from uuid import UUID
 import kuzu
 import numpy as np
 
-from mnemebrain_core.models import Belief, Evidence
+from mnemebrain_core.models import Belief, BeliefType, Evidence, TruthState
 
 
 class KuzuGraphStore:
@@ -123,12 +123,12 @@ class KuzuGraphStore:
 
     def find_similar(
         self, embedding: list[float], threshold: float = 0.92
-    ) -> list[Belief]:
-        """Find beliefs with similar embeddings using cosine similarity."""
+    ) -> list[tuple[Belief, float]]:
+        """Find beliefs with similar embeddings. Returns (belief, similarity) pairs."""
         result = self._conn.execute(
             "MATCH (b:Belief) WHERE size(b.embedding) > 0 RETURN b.id, b.embedding"
         )
-        matches = []
+        matches: list[tuple[Belief, float]] = []
         query_vec = np.array(embedding)
         query_norm = np.linalg.norm(query_vec)
         if query_norm == 0:
@@ -144,7 +144,8 @@ class KuzuGraphStore:
             if sim >= threshold:
                 belief = self.get(UUID(row[0]))
                 if belief:
-                    matches.append(belief)
+                    matches.append((belief, sim))
+        matches.sort(key=lambda x: x[1], reverse=True)
         return matches
 
     def list_beliefs(self) -> list[Belief]:
@@ -157,6 +158,32 @@ class KuzuGraphStore:
             if belief:
                 beliefs.append(belief)
         return beliefs
+
+    def list_beliefs_filtered(
+        self,
+        truth_states: list[TruthState] | None = None,
+        belief_types: list[BeliefType] | None = None,
+        tag: str | None = None,
+        min_confidence: float = 0.0,
+        max_confidence: float = 1.0,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[Belief], int]:
+        """List beliefs with filtering. Returns (beliefs, total_count)."""
+        all_beliefs = self.list_beliefs()
+
+        filtered = all_beliefs
+        if truth_states:
+            filtered = [b for b in filtered if b.truth_state in truth_states]
+        if belief_types:
+            filtered = [b for b in filtered if b.belief_type in belief_types]
+        if tag:
+            filtered = [b for b in filtered if tag in b.tags]
+        filtered = [b for b in filtered if min_confidence <= b.confidence <= max_confidence]
+
+        filtered.sort(key=lambda b: b.confidence, reverse=True)
+        total = len(filtered)
+        return filtered[offset : offset + limit], total
 
     def find_by_claim(self, claim: str) -> Belief | None:
         """Find a belief by exact claim match."""

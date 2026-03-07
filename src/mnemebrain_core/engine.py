@@ -12,7 +12,9 @@ from mnemebrain_core.models import (
     ATTACK_THRESHOLD,
     DECAY_HALFLIFE,
     SUPPORT_THRESHOLD,
+    Belief,
     BeliefType,
+    ConflictPolicy,
     Evidence,
     Polarity,
     TruthState,
@@ -93,3 +95,19 @@ def compute_confidence(evidence: list[Evidence], belief_type: BeliefType) -> flo
         log_odds += delta
 
     return 1.0 / (1.0 + math.exp(-log_odds))
+
+
+def rank_score(similarity: float, confidence: float, alpha: float = 0.7) -> float:
+    """Combined ranking: weighted blend of semantic similarity and confidence."""
+    return alpha * similarity + (1 - alpha) * confidence
+
+
+def apply_conflict_policy(
+    beliefs: list[tuple[Belief, float]], policy: ConflictPolicy
+) -> list[tuple[Belief, float]]:
+    """Filter beliefs based on conflict policy. Works on (belief, score) tuples."""
+    if policy == ConflictPolicy.SURFACE:
+        return beliefs
+    if policy == ConflictPolicy.CONSERVATIVE:
+        return [(b, s) for b, s in beliefs if b.truth_state != TruthState.BOTH]
+    return beliefs

@@ -105,6 +105,43 @@ curl -X POST http://localhost:8000/believe \
 curl "http://localhost:8000/explain?claim=user+is+vegetarian"
 ```
 
+### Search & List
+
+```bash
+# Semantic search with ranked scoring
+curl "http://localhost:8000/search?query=vegetarian&limit=5&alpha=0.7"
+
+# List beliefs with filters
+curl "http://localhost:8000/beliefs?truth_state=TRUE&min_confidence=0.5&limit=20"
+```
+
+### Working Memory Frames
+
+Working memory frames provide an active context buffer for multi-step reasoning episodes.
+
+```bash
+# Open a frame
+curl -X POST http://localhost:8000/frame/open \
+  -H "Content-Type: application/json" \
+  -d '{"query_id": "<uuid>", "top_k": 20, "ttl_seconds": 300}'
+
+# Add a belief to the frame
+curl -X POST http://localhost:8000/frame/<frame_id>/add \
+  -H "Content-Type: application/json" \
+  -d '{"claim": "user is vegetarian"}'
+
+# Get frame context (for LLM prompt injection)
+curl http://localhost:8000/frame/<frame_id>/context
+
+# Commit frame results back to the belief graph
+curl -X POST http://localhost:8000/frame/<frame_id>/commit \
+  -H "Content-Type: application/json" \
+  -d '{"new_beliefs": [], "revisions": []}'
+
+# Close/abandon a frame
+curl -X DELETE http://localhost:8000/frame/<frame_id>
+```
+
 For full endpoint documentation, see [docs/integration-api.md](docs/integration-api.md).
 
 ## Python API
@@ -140,7 +177,8 @@ src/mnemebrain_core/
 ├── models.py          # Belief, Evidence, TruthState, BeliefType
 ├── engine.py          # Pure functions: compute_truth_state, confidence, decay
 ├── store.py           # KuzuGraphStore — embedded graph DB
-├── memory.py          # BeliefMemory — the 4 core operations
+├── memory.py          # BeliefMemory — the 4 core operations + search/list
+├── working_memory.py  # WorkingMemoryFrame — active context for multi-step reasoning
 ├── providers/
 │   ├── base.py        # Abstract EmbeddingProvider
 │   └── embeddings/    # sentence-transformers (optional)

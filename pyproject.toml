@@ -1,6 +1,6 @@
 [project]
 name = "mnemebrain-lite"
-version = "1.0.0a1"
+version = "1.0.0a2"
 description = "Give your AI a real brain - Agents today store text. MnemeBrain stores beliefs with evidence, confidence, provenance, and revision logic."
 readme = "README.md"
 license = "MIT"
