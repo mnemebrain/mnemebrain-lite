@@ -28,6 +28,14 @@ class BeliefType(str, Enum):
     PREDICTION = "prediction"
 
 
+class ConflictPolicy(str, Enum):
+    """How to handle BOTH-state beliefs in query results."""
+
+    SURFACE = "surface"
+    CONSERVATIVE = "conservative"
+    OPTIMISTIC = "optimistic"
+
+
 class Polarity(str, Enum):
     """Evidence polarity — replaces ATTACKS graph edges."""
 

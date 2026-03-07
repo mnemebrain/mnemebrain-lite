@@ -7,7 +7,9 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from mnemebrain_core.engine import compute_confidence, compute_truth_state
-from mnemebrain_core.models import Belief, BeliefType, Evidence, Polarity, TruthState
+from mnemebrain_core.models import (
+    Belief, BeliefType, ConflictPolicy, Evidence, Polarity, TruthState,
+)
 from mnemebrain_core.providers.base import EmbeddingProvider, EvidenceInput
 from mnemebrain_core.store import KuzuGraphStore
 
@@ -75,7 +77,7 @@ class BeliefMemory:
         existing = self._store.find_similar(embedding, threshold=0.92)
 
         if existing:
-            belief = existing[0]
+            belief = existing[0][0]
         else:
             belief = Belief(
                 claim=claim,
@@ -151,9 +153,9 @@ class BeliefMemory:
             exact = self._store.find_by_claim(claim)
             if exact is None:
                 return None
-            matches = [exact]
+            matches = [(exact, 1.0)]
 
-        belief = matches[0]
+        belief = matches[0][0]
         active = [e for e in belief.evidence if e.valid]
         expired = [e for e in belief.evidence if not e.valid]
 
@@ -194,6 +196,57 @@ class BeliefMemory:
             truth_state=belief.truth_state,
             confidence=belief.confidence,
             conflict=belief.truth_state == TruthState.BOTH,
+        )
+
+    def search(
+        self,
+        query: str,
+        limit: int = 10,
+        rank_alpha: float = 0.7,
+        conflict_policy: ConflictPolicy = ConflictPolicy.SURFACE,
+    ) -> list[tuple[Belief, float, float, float]]:
+        """Search beliefs with ranking.
+
+        Returns (belief, similarity, confidence, rank_score) tuples.
+        """
+        from mnemebrain_core.engine import apply_conflict_policy, rank_score
+
+        embedding = self._get_embedder().embed(query)
+        raw_matches = self._store.find_similar(embedding, threshold=0.3)
+
+        scored = [
+            (belief, sim, belief.confidence, rank_score(sim, belief.confidence, rank_alpha))
+            for belief, sim in raw_matches
+        ]
+
+        filtered_pairs = apply_conflict_policy(
+            [(b, rs) for b, _, _, rs in scored], conflict_policy,
+        )
+        filtered_ids = {id(b) for b, _ in filtered_pairs}
+        scored = [item for item in scored if id(item[0]) in filtered_ids]
+
+        scored.sort(key=lambda x: x[3], reverse=True)
+        return scored[:limit]
+
+    def list_beliefs(
+        self,
+        truth_states: list[TruthState] | None = None,
+        belief_types: list[BeliefType] | None = None,
+        tag: str | None = None,
+        min_confidence: float = 0.0,
+        max_confidence: float = 1.0,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[Belief], int]:
+        """List beliefs with filtering."""
+        return self._store.list_beliefs_filtered(
+            truth_states=truth_states,
+            belief_types=belief_types,
+            tag=tag,
+            min_confidence=min_confidence,
+            max_confidence=max_confidence,
+            limit=limit,
+            offset=offset,
         )
 
     def close(self) -> None:
