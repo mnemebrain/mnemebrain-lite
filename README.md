@@ -190,13 +190,14 @@ src/mnemebrain_core/
 
 ## BMB Leaderboard
 
-The **Belief Maintenance Benchmark** is an open benchmark for agent memory systems. 30 tasks, 5 categories — contradiction handling, temporal reasoning, retraction cascades, multi-hop inference, and confidence calibration. Every RAG-based system scored 0% on contradiction detection — they overwrite instead of tracking conflicting evidence.
+The **Belief Maintenance Benchmark** is an open benchmark for agent memory systems. 48 tasks, 8 categories — contradiction detection, belief revision, evidence tracking, temporal decay, counterfactual reasoning, consolidation, multi-hop retrieval, and pattern separation. Every RAG-based system scored 0% on contradiction detection — they overwrite instead of tracking conflicting evidence.
 
 | System | Score |
 |--------|------:|
 | MnemeBrain | **100%** |
 | Structured Memory | 36% |
 | Mem0 (API) | 29% |
+| Naive baseline | 0% |
 | RAG baseline | 0% |
 | OpenAI RAG (API) | 0% |
 | LangChain buffer | 0% |

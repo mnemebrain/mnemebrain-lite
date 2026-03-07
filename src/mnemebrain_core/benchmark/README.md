@@ -1,6 +1,6 @@
 # Belief Maintenance Benchmark (BMB)
 
-An open benchmark that measures whether a memory system can **maintain, revise, and explain beliefs over time**. 30 tasks across 5 categories.
+An open benchmark that measures whether a memory system can **maintain, revise, and explain beliefs over time**. 48 tasks across 8 categories.
 
 See [BMB_REPORT.md](BMB_REPORT.md) for detailed results with real API comparisons.
 
@@ -8,7 +8,7 @@ See [BMB_REPORT.md](BMB_REPORT.md) for detailed results with real API comparison
 
 Standard memory benchmarks test retrieval. BMB tests **belief dynamics**: what happens when evidence conflicts, when time passes, when you need to reason hypothetically. These are the capabilities that separate a belief graph from a vector store.
 
-## Structure: 30 tasks, 5 categories
+## Structure: 48 tasks, 8 categories
 
 | Category                | What it tests                              | Tasks |
 |-------------------------|--------------------------------------------|-------|
@@ -17,6 +17,11 @@ Standard memory benchmarks test retrieval. BMB tests **belief dynamics**: what h
 | Evidence Tracking       | explain() returns full justification chain | 6     |
 | Temporal Updates        | Decay, staleness, time-validity expiry     | 6     |
 | Counterfactual Reasoning| Sandbox simulation without canonical mutation | 6   |
+| Consolidation           | Episodic→semantic compression, pruning, clustering | 6 |
+| Multi-hop Retrieval     | HippoRAG graph traversal, PageRank ranking | 6     |
+| Pattern Separation      | ANN-first orthogonalisation, false-merge prevention | 6 |
+
+The lite package includes the core 30 tasks (categories 1-5). The full [mnemebrain](https://pypi.org/project/mnemebrain/) package adds the 18 Phase 5 tasks (categories 6-8).
 
 ## Quick Start
 
@@ -42,7 +47,7 @@ uv run python run_bmb_benchmark.py
 | `structured_memory`  | Mem0-style k/v    | store, query, retract, explain, revise | None |
 
 Additional adapters available in the full [mnemebrain](https://pypi.org/project/mnemebrain/) package:
-- `mnemebrain` -- full belief graph (9 capabilities)
+- `mnemebrain` -- full belief graph (12 capabilities)
 - `mem0` -- real Mem0 cloud API
 - `openai_rag` -- real OpenAI embeddings
 
@@ -101,7 +106,7 @@ class MyAdapter(MemorySystem):
         ...
 ```
 
-**9 capabilities** (implement more to unlock more scenarios):
+**12 capabilities** (implement more to unlock more scenarios):
 
 | Capability | Method | Unlocks |
 |------------|--------|---------|
@@ -113,6 +118,10 @@ class MyAdapter(MemorySystem):
 | `REVISE` | `revise()` | Belief revision |
 | `SANDBOX` | `sandbox_fork/assume/resolve/discard()` | Counterfactual reasoning |
 | `ATTACK` | `add_attack()` | Attack edge scenarios |
+| `CONSOLIDATION` | `consolidate()` | Consolidation scenarios |
+| `HIPPORAG` | `query_multihop()` | Multi-hop retrieval |
+| `PATTERN_SEPARATION` | `store()` (auto-triggered) | Pattern separation |
+| `CONTRADICTION` | (auto-detected) | Contradiction detection |
 
 ## Adding scenarios
 
@@ -133,16 +142,16 @@ Add entries to `scenarios/data/bmb_scenarios.json`:
 }
 ```
 
-**Action types:** `store`, `query`, `retract`, `explain`, `wait_days`, `revise`, `sandbox_fork`, `sandbox_assume`, `sandbox_resolve`, `sandbox_discard`, `add_attack`
+**Action types:** `store`, `query`, `retract`, `explain`, `wait_days`, `revise`, `sandbox_fork`, `sandbox_assume`, `sandbox_resolve`, `sandbox_discard`, `add_attack`, `consolidate`, `query_multihop`, `get_memory_tier`
 
 ## Architecture
 
 ```
 benchmark/
   bmb_cli.py               # CLI entry point
-  interface.py             # MemorySystem ABC + 9 capabilities
-  scoring.py               # Expectation evaluation (16 check types)
-  system_runner.py         # Scenario executor (11 action types)
+  interface.py             # MemorySystem ABC + 12 capabilities
+  scoring.py               # Expectation evaluation (20+ check types)
+  system_runner.py         # Scenario executor (14 action types)
   system_report.py         # Scorecard + JSON export
   adapters/
     naive_baseline.py      # Flat vector store
@@ -153,7 +162,7 @@ benchmark/
     schema.py              # Action, Expectation, Scenario dataclasses
     loader.py              # JSON loader + validation
     data/
-      bmb_scenarios.json   # 30 BMB scenarios
+      bmb_scenarios.json   # 48 BMB scenarios (30 core + 18 Phase 5)
 ```
 
 ## Contributing

@@ -2,7 +2,7 @@
 
 ## Abstract
 
-The Belief Maintenance Benchmark (BMB) is a 30-task evaluation suite that measures whether an AI memory system can maintain, revise, and explain beliefs over time. Unlike retrieval-focused benchmarks, BMB tests **belief dynamics**: contradiction detection, evidence-based revision, temporal decay, justification chains, and counterfactual reasoning. These capabilities are architecturally impossible for systems that treat memory as flat text or vector storage.
+The Belief Maintenance Benchmark (BMB) is a 48-task evaluation suite that measures whether an AI memory system can maintain, revise, and explain beliefs over time. Unlike retrieval-focused benchmarks, BMB tests **belief dynamics**: contradiction detection, evidence-based revision, temporal decay, justification chains, counterfactual reasoning, episodic-to-semantic consolidation, multi-hop graph retrieval, and pattern separation. These capabilities are architecturally impossible for systems that treat memory as flat text or vector storage.
 
 ## Motivation
 
@@ -15,7 +15,7 @@ A user says "I'm vegetarian." Later they say "I ate steak yesterday." A retrieva
 3. Surface the conflict to the agent
 4. Allow principled revision when new evidence arrives
 
-BMB tests exactly these capabilities across 30 multi-step scenarios.
+BMB tests exactly these capabilities across 48 multi-step scenarios.
 
 ## Benchmark Design
 
@@ -28,6 +28,9 @@ BMB tests exactly these capabilities across 30 multi-step scenarios.
 | 3 | Evidence Tracking | explain() justification chains | Evidence counts, expired evidence tracking |
 | 4 | Temporal Updates | Exponential decay with type-specific half-lives | Confidence decay, prediction expiry |
 | 5 | Counterfactual Reasoning | Copy-on-write sandbox simulation | Sandbox isolation, canonical preservation |
+| 6 | Consolidation | Episodic→semantic compression via clustering | Cluster formation, pruning, tier promotion |
+| 7 | Multi-hop Retrieval | HippoRAG ego-subgraph PageRank | Graph traversal finds linked beliefs |
+| 8 | Pattern Separation | ANN-first embedding orthogonalisation | Similar-but-distinct beliefs stay separable |
 
 ### Task design principles
 
@@ -49,13 +52,13 @@ Each task produces 1-3 binary checks:
 | Correct confidence | 1 | Confidence above/below threshold |
 | Explanation quality | 1 | Evidence chain present with correct counts |
 
-**Maximum score: 90 points** (30 tasks x 3 checks average)
+**Maximum score: ~100 checks** across 48 tasks (1-3 checks per task)
 
 Per-category scores are computed as the average of scenario scores within that category (0.0-1.0). Overall score is the average across categories.
 
 ## Capability Matrix
 
-The benchmark leverages MnemeBrain's 9 system capabilities:
+The benchmark leverages MnemeBrain's 12 system capabilities:
 
 | Capability | Description | Adapter support |
 |------------|-------------|-----------------|
@@ -68,6 +71,9 @@ The benchmark leverages MnemeBrain's 9 system capabilities:
 | `revise` | Add evidence to existing belief, recompute | MnemeBrain |
 | `sandbox` | Copy-on-write hypothetical reasoning | MnemeBrain |
 | `attack` | Explicit ATTACK edges between beliefs | MnemeBrain |
+| `consolidation` | Episodic→semantic compression via clustering | MnemeBrain |
+| `hipporag` | Multi-hop graph retrieval with PageRank | MnemeBrain |
+| `pattern_separation` | ANN-first embedding orthogonalisation | MnemeBrain |
 
 ### Why baselines fail (verified by real benchmark runs)
 
@@ -173,7 +179,7 @@ All results are from actual benchmark execution, including real Mem0 API calls a
 
 ```
 Belief Maintenance Benchmark (BMB)
-30 tasks | 5 categories | 62 checks
+48 tasks | 8 categories | ~100 checks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   mnemebrain           ████████████████████ 100%
   structured_memory    ███████ 36%
@@ -185,17 +191,20 @@ Belief Maintenance Benchmark (BMB)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-### MnemeBrain: 62/62 checks (100%), 30/30 scenarios
+### MnemeBrain: 100%, 48/48 scenarios
 
-| Category | Scenarios | Checks | Score |
-|----------|-----------|--------|-------|
-| Contradiction Detection | 6/6 | 13/13 | **100%** |
-| Belief Revision | 6/6 | 11/11 | **100%** |
-| Evidence Tracking | 6/6 | 15/15 | **100%** |
-| Temporal Updates | 6/6 | 7/7 | **100%** |
-| Counterfactual Reasoning | 6/6 | 16/16 | **100%** |
+| Category | Scenarios | Score |
+|----------|-----------|-------|
+| Contradiction Detection | 6/6 | **100%** |
+| Belief Revision | 6/6 | **100%** |
+| Evidence Tracking | 6/6 | **100%** |
+| Temporal Updates | 6/6 | **100%** |
+| Counterfactual Reasoning | 6/6 | **100%** |
+| Consolidation | 6/6 | **100%** |
+| Multi-hop Retrieval | 6/6 | **100%** |
+| Pattern Separation | 6/6 | **100%** |
 
-### Mem0 (real API): 29%, 18/30 scenarios attempted
+### Mem0 (real API, graph enabled): 29%, 18/48 scenarios attempted
 
 Uses the real Mem0 cloud API (`mem0ai` SDK). Has `store`, `query`, `retract`, `explain`, `revise`.
 
@@ -214,7 +223,7 @@ Notable Mem0 behaviors observed:
 - No polarity tracking: `attacking_count` is always 0
 - Async processing: memories take ~1.5s to become searchable
 
-### Structured Memory (Mem0-style, local): 36%, 18/30 scenarios
+### Structured Memory (Mem0-style, local): 36%, 18/48 scenarios
 
 Local simulation with `store`, `query`, `retract`, `explain`, `revise`. No Belnap logic, no decay, no sandbox.
 
@@ -226,7 +235,7 @@ Local simulation with `store`, `query`, `retract`, `explain`, `revise`. No Belna
 | Temporal Updates | 0 (skipped) | **N/A** | No decay capability |
 | Counterfactual | 0 (skipped) | **N/A** | No sandbox capability |
 
-### OpenAI RAG (real API): 0%, 5/30 scenarios attempted
+### OpenAI RAG (real API): 0%, 5/48 scenarios attempted
 
 Uses real OpenAI `text-embedding-3-small` embeddings. Store + query only, last-write-wins.
 
@@ -235,7 +244,7 @@ Uses real OpenAI `text-embedding-3-small` embeddings. Store + query only, last-w
 | Contradiction Detection | 5 attempted | **0%** -- no truth_state, overwrites on similar claim |
 | All other categories | skipped | No required capabilities |
 
-### Naive Baseline / RAG Baseline / LangChain Buffer: 0%, 5/30 scenarios each
+### Naive Baseline / RAG Baseline / LangChain Buffer: 0%, 5/48 scenarios each
 
 All three use local embeddings with store + query only. 0% on all attempted contradiction scenarios.
 
@@ -281,10 +290,10 @@ Results are deterministic for the same embedding model. The benchmark uses no LL
 | File | Purpose |
 |------|---------|
 | `bmb_cli.py` | CLI entry point with bar chart output |
-| `scenarios/data/bmb_scenarios.json` | 30 scenario definitions (JSON) |
-| `interface.py` | MemorySystem ABC with 9 capability methods |
-| `scoring.py` | Expectation evaluation (16 check types) |
-| `system_runner.py` | Scenario executor (11 action types) |
+| `scenarios/data/bmb_scenarios.json` | 48 scenario definitions (JSON) |
+| `interface.py` | MemorySystem ABC with 12 capability methods |
+| `scoring.py` | Expectation evaluation (20+ check types) |
+| `system_runner.py` | Scenario executor (14 action types) |
 | `adapters/mnemebrain_adapter.py` | Full-capability adapter |
 | `adapters/naive_baseline.py` | Flat vector store baseline |
 
@@ -302,6 +311,6 @@ Add new scenarios to `bmb_scenarios.json`. Add new adapters by implementing `Mem
 
 ```
 MnemeBrain Belief Maintenance Benchmark (BMB)
-30 tasks | 5 categories | 90 max points
+48 tasks | 8 categories | ~100 checks
 https://github.com/mnemebrain/mnemebrain
 ```
