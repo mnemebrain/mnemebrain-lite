@@ -29,7 +29,7 @@ MnemeBrain has two layers:
          └────────────┬────────────┘
                       │
          ┌────────────▼────────────┐
-         │    MnemeBrain Core      │
+         │        MnemeBrain       │
          │   (private research)    │
          │   consolidation engine  │
          │   advanced retrieval    │
