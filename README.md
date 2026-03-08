@@ -16,6 +16,37 @@
 
 ---
 
+## Project Structure
+
+MnemeBrain has two layers:
+
+- **mnemebrain-lite (this repo)** — Open-source core belief memory engine. Evidence graphs, Belnap truth states, AGM revision, temporal decay, and semantic search.
+- **MnemeBrain Core ([private research repo](https://github.com/mnemebrain/mnemebrain))** — Full cognitive architecture through Phase 5: ConsolidationDaemon, HippoRAG retrieval, pattern separation, and advanced memory consolidation.
+
+```
+         ┌─────────────────────────┐
+         │    Agent / LLM Layer    │
+         └────────────┬────────────┘
+                      │
+         ┌────────────▼────────────┐
+         │    MnemeBrain Core      │
+         │   (private research)    │
+         │   Consolidation · RAG   │
+         │   Pattern separation    │
+         └────────────┬────────────┘
+                      │
+         ┌────────────▼────────────┐
+         │    mnemebrain-lite      │
+         │   Belief engine (OSS)   │
+         │   Evidence · Truth      │
+         │   Revision · Search     │
+         └─────────────────────────┘
+```
+
+The lite repo exposes the core primitives required to build belief-aware agents.
+
+---
+
 ## Why This Exists
 
 Most AI agent memory systems treat memory as text retrieval.
@@ -308,7 +339,7 @@ src/mnemebrain_core/
     └── schemas.py     # Request/response models
 ```
 
-**Architecture phases:**
+**Architecture phases (mnemebrain-lite):**
 
 | Phase | Adds | Status |
 |-------|------|--------|
@@ -319,7 +350,12 @@ src/mnemebrain_core/
 | 3 | AGM revision policies + ATTACKS edges | ✅ Shipped |
 | 4 | Reconsolidation windows + GoalNode | ✅ Shipped |
 | 4.5 | PolicyNode + EWMA learning + blame attribution | ✅ Shipped |
-| 5 | ConsolidationDaemon + HippoRAG retrieval + pattern separation | Planned (see [mnemebrain](https://github.com/mnemebrain/mnemebrain)) |
+
+**Full architecture (MnemeBrain Core — private):**
+
+| Phase | Adds | Status |
+|-------|------|--------|
+| 5 | ConsolidationDaemon + HippoRAG retrieval + pattern separation | In progress (see [mnemebrain](https://github.com/mnemebrain/mnemebrain)) |
 
 ---
 
