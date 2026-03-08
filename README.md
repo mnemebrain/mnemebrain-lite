@@ -52,9 +52,9 @@ The lite engine is fully usable on its own and powers the public [MnemeBrain ben
 
 ## Why This Exists
 
-Most AI agent memory systems treat memory as text retrieval.
+Most AI agent memory systems store facts. But agents don't reason about facts — they reason about beliefs.
 
-This works for storing information. It fails when beliefs evolve.
+LLM memory systems retrieve information, but they rarely maintain beliefs.
 
 ```
 User: "I'm vegetarian"
@@ -64,7 +64,7 @@ User: "I ate steak yesterday"
 
 A RAG system either silently overwrites the first statement — or returns both without acknowledging the conflict. It cannot represent contradictions.
 
-MnemeBrain was built to measure and close this gap. It stores **beliefs**, not text — with evidence, confidence, provenance, and revision logic baked in.
+MnemeBrain is a belief memory engine that tracks contradiction, uncertainty, and revision instead of overwriting information. It borrows ideas from truth maintenance systems and belief revision research, but packages them into a developer-friendly memory engine for LLM agents.
 
 ---
 
