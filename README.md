@@ -20,8 +20,8 @@
 
 MnemeBrain has two layers:
 
-- **mnemebrain-lite (this repo)** — Open-source core belief memory engine. Evidence graphs, Belnap truth states, AGM revision, temporal decay, and semantic search.
-- **MnemeBrain Core ([private research repo](https://github.com/mnemebrain/mnemebrain))** — Full cognitive architecture through Phase 5: ConsolidationDaemon, HippoRAG retrieval, pattern separation, and advanced memory consolidation.
+- **mnemebrain-lite (this repo)** — Open-source core belief memory engine providing belief storage, evidence graphs, Belnap-style truth states, belief revision primitives, temporal decay, and semantic search.
+- **MnemeBrain Core ([private research repo](https://github.com/mnemebrain/mnemebrain))** — Extended cognitive architecture used in the MnemeBrain research system, including consolidation daemons, advanced retrieval (HippoRAG-style), pattern separation, and long-term memory consolidation mechanisms.
 
 ```
          ┌─────────────────────────┐
@@ -31,19 +31,22 @@ MnemeBrain has two layers:
          ┌────────────▼────────────┐
          │    MnemeBrain Core      │
          │   (private research)    │
-         │   Consolidation · RAG   │
-         │   Pattern separation    │
+         │   consolidation engine  │
+         │   advanced retrieval    │
+         │   pattern separation    │
          └────────────┬────────────┘
                       │
          ┌────────────▼────────────┐
          │    mnemebrain-lite      │
-         │   Belief engine (OSS)   │
-         │   Evidence · Truth      │
-         │   Revision · Search     │
+         │   open-source belief    │
+         │   memory engine         │
+         │                         │
+         │ evidence · truth ·      │
+         │ revision · search       │
          └─────────────────────────┘
 ```
 
-The lite repo exposes the core primitives required to build belief-aware agents.
+The lite engine is fully usable on its own and powers the public [MnemeBrain benchmark suite](https://github.com/mnemebrain/mnemebrain-benchmark).
 
 ---
 
