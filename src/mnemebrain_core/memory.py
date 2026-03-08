@@ -76,7 +76,9 @@ class BeliefMemory:
         if self._embedder is None:
             raise ImportError(
                 "No embedding provider available. "
-                "Install with: pip install mnemebrain-lite[embeddings]"
+                "Install with: pip install mnemebrain-lite[embeddings] "
+                "(local) or pip install mnemebrain-lite[openai] and set "
+                "OPENAI_API_KEY"
             )
         return self._embedder
 

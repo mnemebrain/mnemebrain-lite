@@ -13,7 +13,7 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 ```bash
 # Clone the repository
-git clone git@github.com:Mneme-Brain/cc-mnemebrain.git
+git clone git@github.com:mnemebrain/cc-mnemebrain.git
 cd mnemebrain-lite
 
 # Install dependencies (including dev extras)

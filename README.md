@@ -1,21 +1,87 @@
 # MnemeBrain Lite
 
 [![GitHub Release](https://img.shields.io/github/v/release/mnemebrain/mnemebrain-lite)](https://github.com/mnemebrain/mnemebrain-lite/releases)
+[![PyPI](https://img.shields.io/pypi/v/mnemebrain-lite)](https://pypi.org/project/mnemebrain-lite/)
 [![codecov](https://codecov.io/gh/mnemebrain/mnemebrain-lite/graph/badge.svg)](https://codecov.io/gh/mnemebrain/mnemebrain-lite)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Give your AI a real brain.
+**The belief layer for AI agents.**
 
-Agents today store text. Mnemebrain stores beliefs — with evidence, confidence, provenance, and revision logic.
+> ⭐ **Building AI agents?** Run the [BMB benchmark](https://github.com/mnemebrain/mnemebrain-benchmark) on your memory stack.
+> ```bash
+> pip install mnemebrain-benchmark
+> bmb run
+> ```
+> No API keys. No LLM calls. See how your system handles contradictions, belief revision, and temporal decay — in 60 seconds.
 
-Beliefs carry evidence, confidence, provenance, and causal justification. The system can explain, retract, and revise — unlike flat key-value agent memory.
+---
 
-## Core Concepts
+## Why This Exists
 
-**TruthState** — 4-valued logic (Belnap): `TRUE`, `FALSE`, `BOTH` (contradiction), `NEITHER` (insufficient evidence).
+Most AI agent memory systems treat memory as text retrieval.
 
-**Evidence Ledger** — Append-only. Evidence supports or attacks a belief. Never deleted, only invalidated.
+This works for storing information. It fails when beliefs evolve.
 
-**Time Decay** — Evidence weight decays based on belief type:
+```
+User: "I'm vegetarian"
+[later]
+User: "I ate steak yesterday"
+```
+
+A RAG system either silently overwrites the first statement — or returns both without acknowledging the conflict. It cannot represent contradictions.
+
+MnemeBrain was built to measure and close this gap. It stores **beliefs**, not text — with evidence, confidence, provenance, and revision logic baked in.
+
+---
+
+## Benchmark Results
+
+**Belief Maintenance Benchmark (BMB)** — 30 tasks · 5 categories · 62 checks
+
+```
+  mnemebrain           ████████████████████ 100%
+  structured_memory    ███████ 36%
+  mem0 (real API)      █████ 29%
+  openai_rag (real)     0%
+  langchain_buffer      0%
+  naive_baseline        0%
+  rag_baseline          0%
+```
+
+| System | Score | Notes |
+|--------|------:|-------|
+| **MnemeBrain** | **100%** | 62/62 checks, all 30 scenarios |
+| Structured Memory | 36% | No Belnap logic, no polarity tracking |
+| Mem0 (real API) | 29% | Always `truth_state=true`, aggressive dedup |
+| OpenAI RAG (real API) | 0% | `truth_state=None`, overwrites on conflict |
+| LangChain Buffer | 0% | Store + query only |
+| RAG Baseline | 0% | Store + query only |
+
+Every RAG-based system scored **0% on contradiction detection**. They overwrite instead of tracking conflicting evidence.
+
+Full results: [BMB_REPORT.md](https://github.com/mnemebrain/mnemebrain-benchmark/blob/main/BMB_REPORT.md)
+
+---
+
+## How It Works
+
+```
+Evidence (supports / attacks)
+        ↓
+   Belief Node
+        ↓
+ TruthState (TRUE / FALSE / BOTH / NEITHER)
+        ↓
+ Confidence + Temporal Decay
+        ↓
+    Agent API
+```
+
+**TruthState** uses Belnap's four-valued logic. Instead of overwriting on conflict, the system represents the contradiction explicitly with `BOTH` — then lets you resolve it with new evidence.
+
+**Evidence Ledger** is append-only. Evidence is never deleted, only invalidated. Every belief carries a full justification chain: what supports it, what attacks it, and what has expired.
+
+**Temporal Decay** degrades evidence weight by belief type:
 
 | BeliefType | Half-life |
 |------------|-----------|
@@ -24,70 +90,133 @@ Beliefs carry evidence, confidence, provenance, and causal justification. The sy
 | INFERENCE | 30 days |
 | PREDICTION | 3 days |
 
-## 4 Core Operations
-
-| Operation | Description | Requires embeddings? |
-|-----------|-------------|:--------------------:|
-| `believe()` | Store a belief with evidence. Merges duplicates via embedding similarity. | Yes |
-| `retract()` | Invalidate evidence and recompute affected beliefs. | No |
-| `explain()` | Return full justification chain — supporting, attacking, and expired evidence. | Yes |
-| `revise()` | Add new evidence to an existing belief and recompute. | No |
+---
 
 ## Quick Start
 
 ```bash
-pip install mnemebrain-lite
+pip install mnemebrain-lite                # core only (no embeddings)
+pip install mnemebrain-lite[embeddings]    # + local sentence-transformers
+pip install mnemebrain-lite[openai]        # + OpenAI embeddings (set OPENAI_API_KEY)
+pip install mnemebrain-lite[all]           # everything
+```
 
+```python
+from mnemebrain_core.memory import BeliefMemory
+from mnemebrain_core.providers.base import EvidenceInput
+
+memory = BeliefMemory(db_path="./my_data")
+
+# Store a belief
+belief = memory.believe(
+    claim="user is vegetarian",
+    evidence=[EvidenceInput(
+        source_ref="msg_12",
+        content="They said no meat please",
+        polarity="supports",
+        weight=0.8,
+        reliability=0.9,
+    )]
+)
+
+# Introduce conflicting evidence — belief becomes BOTH (contradiction)
+memory.revise(
+    belief_id=belief.id,
+    new_evidence=EvidenceInput(
+        source_ref="msg_47",
+        content="User ordered steak",
+        polarity="attacks",
+        weight=0.9,
+        reliability=0.95,
+    )
+)
+
+# Explain the contradiction
+result = memory.explain(claim="user is vegetarian")
+# → truth_state=BOTH, supporting_count=1, attacking_count=1
+```
+
+```bash
 # Full install (Linux / Apple Silicon)
 uv sync --extra dev --extra embeddings
+
+# OpenAI embeddings (any platform, requires OPENAI_API_KEY)
+uv sync --extra dev --extra openai
 
 # Without embeddings (Intel Mac — torch 2.3+ has no x86_64 wheels)
 uv sync --extra dev
 
 # Run tests
 uv run pytest tests/ -v
-# Without embeddings: unit tests pass, integration/e2e skip automatically
 
 # Start API server
 uv run python -m mnemebrain_core
 ```
 
-> **Intel Mac note:** `sentence-transformers` requires PyTorch, which no longer
-> ships x86_64 macOS wheels (torch 2.3+). Without embeddings, `/believe` and
-> `/explain` return **501 Not Implemented**. All other endpoints work normally.
-> To use all operations, provide a custom `EmbeddingProvider` or install on a
-> supported platform.
+> **Intel Mac note:** `sentence-transformers` requires PyTorch, which no longer ships x86_64 macOS wheels (torch 2.3+). Use `mnemebrain-lite[openai]` instead — it works on any platform. Without any embedding provider, `/believe` and `/explain` return **501 Not Implemented**. All other endpoints work.
+
+---
+
+## Core Operations
+
+| Operation | Description | Embeddings? |
+|-----------|-------------|:-----------:|
+| `believe()` | Store a belief with evidence. Merges duplicates via embedding similarity. | Yes |
+| `retract()` | Invalidate evidence and recompute affected beliefs. | No |
+| `explain()` | Return full justification chain — supporting, attacking, and expired evidence. | Yes |
+| `revise()` | Add new evidence to an existing belief and recompute. | No |
+
+---
+
+## Formal Model
+
+MnemeBrain is grounded in two well-established theories from knowledge representation and belief revision:
+
+- **Belnap four-valued logic (1977)** — used to represent contradictory evidence without collapsing the belief system. Instead of overwriting, the system holds `BOTH` as a valid, stable state.
+- **AGM belief revision (Alchourrón, Gärdenfors, Makinson, 1985)** — defines how a rational agent updates beliefs when new evidence arrives, with minimal disturbance to existing knowledge.
+
+**TruthState** is computed over the evidence ledger using Belnap's lattice:
+
+```
+TruthState ∈ { TRUE, FALSE, BOTH, NEITHER }
+
+TRUE     — net supporting evidence dominates
+FALSE    — net attacking evidence dominates
+BOTH     — significant supporting AND attacking evidence (contradiction)
+NEITHER  — insufficient evidence to determine
+```
+
+**Confidence** is derived from weighted, time-decayed evidence:
+
+```
+confidence = Σ(support_weight × decay(t)) / (Σ(support_weight × decay(t)) + Σ(attack_weight × decay(t)))
+```
+
+where `decay(t) = 0.5 ^ (t / half_life)` and `half_life` varies by belief type (3 days for PREDICTION → 365 days for FACT).
+
+**Belief ranking** uses a composite score across three signals:
+
+```
+rank_score = 0.60 × similarity        # semantic relevance to query
+           + 0.25 × confidence        # evidence strength
+           + 0.15 × stability         # inverse of revision volatility
+```
+
+Stability is `1 / (1 + revision_count)` — beliefs that have been revised frequently rank lower than beliefs that have been stable, even at equal confidence. This prevents contradicted high-confidence beliefs from polluting retrieval.
+
+**Revision policy** follows AGM minimal change: when new evidence contradicts an existing belief, the system retracts the minimum set of evidence necessary to restore consistency. Pluggable policies (recency, confidence-weighted, entrenchment-based) determine selection order.
+
+**Counterfactual reasoning** uses copy-on-write sandbox isolation: hypothetical evidence is applied to a forked belief graph, leaving the canonical state unchanged.
+
+---
 
 ## REST API
 
 ```bash
-# Health check
-curl http://localhost:8000/health
+# Start the server
+uv run python -m mnemebrain_core
 
-# Retract evidence
-curl -X POST http://localhost:8000/retract \
-  -H "Content-Type: application/json" \
-  -d '{"evidence_id": "<uuid>"}'
-
-# Revise with new evidence
-curl -X POST http://localhost:8000/revise \
-  -H "Content-Type: application/json" \
-  -d '{
-    "belief_id": "<uuid>",
-    "evidence": {
-      "source_ref": "msg_50",
-      "content": "confirmed vegetarian",
-      "polarity": "supports",
-      "weight": 0.9,
-      "reliability": 0.95
-    }
-  }'
-```
-
-With embeddings installed, two additional endpoints are available:
-
-```bash
-# Create a belief (requires embeddings)
+# Store a belief
 curl -X POST http://localhost:8000/believe \
   -H "Content-Type: application/json" \
   -d '{
@@ -101,23 +230,38 @@ curl -X POST http://localhost:8000/believe \
     }]
   }'
 
-# Explain a belief (requires embeddings)
+# Explain a belief (returns truth_state, confidence, full evidence chain)
 curl "http://localhost:8000/explain?claim=user+is+vegetarian"
-```
 
-### Search & List
+# Revise with new evidence
+curl -X POST http://localhost:8000/revise \
+  -H "Content-Type: application/json" \
+  -d '{
+    "belief_id": "<uuid>",
+    "evidence": {
+      "source_ref": "msg_50",
+      "content": "User ordered steak",
+      "polarity": "attacks",
+      "weight": 0.9,
+      "reliability": 0.95
+    }
+  }'
 
-```bash
+# Retract evidence
+curl -X POST http://localhost:8000/retract \
+  -H "Content-Type: application/json" \
+  -d '{"evidence_id": "<uuid>"}'
+
 # Semantic search with ranked scoring
 curl "http://localhost:8000/search?query=vegetarian&limit=5&alpha=0.7"
 
-# List beliefs with filters
-curl "http://localhost:8000/beliefs?truth_state=TRUE&min_confidence=0.5&limit=20"
+# List beliefs by state
+curl "http://localhost:8000/beliefs?truth_state=BOTH&min_confidence=0.5"
 ```
 
 ### Working Memory Frames
 
-Working memory frames provide an active context buffer for multi-step reasoning episodes.
+Frames are active context buffers for multi-step reasoning episodes.
 
 ```bash
 # Open a frame
@@ -130,45 +274,18 @@ curl -X POST http://localhost:8000/frame/<frame_id>/add \
   -H "Content-Type: application/json" \
   -d '{"claim": "user is vegetarian"}'
 
-# Get frame context (for LLM prompt injection)
+# Get context for LLM prompt injection
 curl http://localhost:8000/frame/<frame_id>/context
 
-# Commit frame results back to the belief graph
+# Commit results back to the belief graph
 curl -X POST http://localhost:8000/frame/<frame_id>/commit \
   -H "Content-Type: application/json" \
   -d '{"new_beliefs": [], "revisions": []}'
-
-# Close/abandon a frame
-curl -X DELETE http://localhost:8000/frame/<frame_id>
 ```
 
-For full endpoint documentation, see [docs/integration-api.md](docs/integration-api.md).
+Full endpoint docs: [docs/integration-api.md](docs/integration-api.md)
 
-## Python API
-
-```python
-from mnemebrain_core.memory import BeliefMemory
-from mnemebrain_core.providers.base import EvidenceInput
-
-memory = BeliefMemory(db_path="./my_data")
-
-# Retract evidence (always works)
-memory.retract(evidence_id=some_uuid)
-
-# Revise a belief (always works)
-memory.revise(
-    belief_id=belief_uuid,
-    new_evidence=EvidenceInput(
-        source_ref="msg_50",
-        content="confirmed vegetarian",
-        polarity="supports",
-        weight=0.9,
-        reliability=0.95,
-    ),
-)
-
-# believe() and explain() require embeddings — see docs/integration-api.md
-```
+---
 
 ## Architecture
 
@@ -177,43 +294,72 @@ src/mnemebrain_core/
 ├── models.py          # Belief, Evidence, TruthState, BeliefType
 ├── engine.py          # Pure functions: compute_truth_state, confidence, decay
 ├── store.py           # KuzuGraphStore — embedded graph DB
-├── memory.py          # BeliefMemory — the 4 core operations + search/list
+├── memory.py          # BeliefMemory — 4 core operations + search/list
 ├── working_memory.py  # WorkingMemoryFrame — active context for multi-step reasoning
 ├── providers/
 │   ├── base.py        # Abstract EmbeddingProvider
-│   └── embeddings/    # sentence-transformers (optional)
+│   └── embeddings/    # sentence-transformers or OpenAI (optional)
 └── api/
     ├── app.py         # FastAPI application factory
     ├── routes.py      # REST endpoints
     └── schemas.py     # Request/response models
 ```
 
+**Architecture phases:**
+
+| Phase | Adds | Status |
+|-------|------|--------|
+| 1 | EvidenceLedger + TruthState + 4 core operations | ✅ Shipped |
+| 1.5 | Confidence ranking + stability score + TruthState multiplier | ✅ Shipped |
+| 2 | WorkingMemoryFrame (context cache) | ✅ Shipped |
+| 2.5 | BeliefSandbox (copy-on-write hypothetical reasoning) | ✅ Shipped |
+| 3 | AGM revision policies + ATTACKS edges | ✅ Shipped |
+| 4 | Reconsolidation windows + GoalNode | ✅ Shipped |
+| 4.5 | PolicyNode + EWMA learning + blame attribution | ✅ Shipped |
+| 5 | ConsolidationDaemon + HippoRAG retrieval + pattern separation | ✅ Shipped |
+
+**Phase 5** adds three mechanisms that mirror biological memory consolidation: a background daemon that compresses episodic beliefs into semantic beliefs (hippocampal-neocortical transfer), HippoRAG-style Personalized PageRank retrieval for multi-hop queries that cosine similarity cannot express, and dentate-gyrus-inspired pattern separation at encoding to prevent embedding blur for similar-but-distinct beliefs. Target: < 5% false-merge rate, +20% multi-hop QA accuracy vs RAG baseline, sub-linear memory growth at scale. Full spec: [v4_phase5_consolidation_daemon.md](docs/plans/v4_phase5_consolidation_daemon.md).
+
+---
+
 ## BMB Leaderboard
 
-The **Belief Maintenance Benchmark** is an open benchmark for agent memory systems. 48 tasks, 8 categories — contradiction detection, belief revision, evidence tracking, temporal decay, counterfactual reasoning, consolidation, multi-hop retrieval, and pattern separation. Every RAG-based system scored 0% on contradiction detection — they overwrite instead of tracking conflicting evidence.
+The **Belief Maintenance Benchmark** is an open evaluation for agent memory systems. 30 tasks, 5 categories — contradiction detection, belief revision, evidence tracking, temporal decay, and counterfactual reasoning.
 
 | System | Score |
 |--------|------:|
-| MnemeBrain | **100%** |
+| **MnemeBrain** | **100%** |
 | Structured Memory | 36% |
-| Mem0 (API) | 29% |
-| Naive baseline | 0% |
-| RAG baseline | 0% |
-| OpenAI RAG (API) | 0% |
-| LangChain buffer | 0% |
+| Mem0 (real API) | 29% |
+| OpenAI RAG (real API) | 0% |
+| LangChain Buffer | 0% |
+| RAG Baseline | 0% |
 
-**Add your system.** Implement the [`MemorySystemAdapter`](src/mnemebrain_core/benchmark/interface.py) interface, drop it in `benchmark/adapters/`, and run:
+**Add your system.** Implement the [`MemorySystemAdapter`](https://github.com/mnemebrain/mnemebrain-benchmark/blob/main/src/mnemebrain_benchmark/interface.py) interface, drop it in `adapters/`, and run:
 
 ```bash
-pip install mnemebrain-lite[embeddings]
-python run_bmb_benchmark.py --adapters your_adapter
+pip install mnemebrain-benchmark
+bmb run --adapters your_adapter
 ```
 
-We welcome adapters from competing systems. All tests are deterministic, all scoring is open-source, and we publish every result — including systems that outscore ours. See [benchmark/README.md](src/mnemebrain_core/benchmark/README.md) for adapter docs and [BMB_REPORT.md](src/mnemebrain_core/benchmark/BMB_REPORT.md) for full results.
+All tests are deterministic. All scoring is open-source. We publish every result — including systems that outscore ours.
+
+Adapter docs: [mnemebrain-benchmark README](https://github.com/mnemebrain/mnemebrain-benchmark) · Full results: [BMB_REPORT.md](https://github.com/mnemebrain/mnemebrain-benchmark/blob/main/BMB_REPORT.md)
+
+---
+
+## References
+
+- Belnap, N. D. (1977). A useful four-valued logic. In *Modern Uses of Multiple-Valued Logic*. Reidel.
+- Alchourrón, C. E., Gärdenfors, P., & Makinson, D. (1985). On the logic of theory change: Partial meet contraction and revision functions. *Journal of Symbolic Logic*, 50(2), 510–530.
+- Lewis, D. (1973). *Counterfactuals*. Harvard University Press.
+- Gutierrez, B. J., et al. (2024). HippoRAG: Neurobiologically Inspired Long-Term Memory for Large Language Models. *NeurIPS 2024*.
+
+---
 
 ## Tech Stack
 
-Python 3.12+, uv, FastAPI, Kuzu, Pydantic v2, pytest, sentence-transformers (optional)
+Python 3.12+, uv, FastAPI, Kuzu, Pydantic v2, pytest, sentence-transformers or OpenAI embeddings (optional)
 
 ## Contributing
 

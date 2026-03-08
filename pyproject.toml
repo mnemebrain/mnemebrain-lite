@@ -1,6 +1,6 @@
 [project]
 name = "mnemebrain-lite"
-version = "1.0.0a2"
+version = "0.1.0a3"
 description = "Give your AI a real brain - Agents today store text. MnemeBrain stores beliefs with evidence, confidence, provenance, and revision logic."
 readme = "README.md"
 license = "MIT"
@@ -22,9 +22,13 @@ api = [
 embeddings = [
     "sentence-transformers>=3.0,<4.0",
 ]
+openai = [
+    "openai>=1.0",
+]
 all = [
     "mnemebrain-lite[api]",
     "mnemebrain-lite[embeddings]",
+    "mnemebrain-lite[openai]",
 ]
 dev = [
     "mnemebrain-lite[api]",

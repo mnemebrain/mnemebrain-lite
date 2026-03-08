@@ -137,6 +137,8 @@ class KuzuGraphStore:
         while result.has_next():
             row = result.get_next()
             stored_emb = np.array(row[1])
+            if stored_emb.shape != query_vec.shape:
+                continue  # skip embeddings from a different provider
             stored_norm = np.linalg.norm(stored_emb)
             if stored_norm == 0:
                 continue

@@ -1,3 +1,3 @@
-"""MnemeBrain Lite — biological belief memory for LLM agents."""
+"""MnemeBrain Lite — The belief layer for AI agents."""
 
-__version__ = "1.0.0a1"
+__version__ = "0.1.0a1"
