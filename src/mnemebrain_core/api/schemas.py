@@ -3,33 +3,36 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+from mnemebrain_core.models import BeliefType, Polarity
 
 
 class EvidenceRequest(BaseModel):
     source_ref: str
     content: str
-    polarity: str  # "supports" or "attacks"
+    polarity: Polarity
     weight: float = Field(ge=0.0, le=1.0, default=0.7)
     reliability: float = Field(ge=0.0, le=1.0, default=0.8)
     scope: str | None = None
 
 
 class BelieveRequest(BaseModel):
-    claim: str
+    claim: str = Field(min_length=1)
     evidence: list[EvidenceRequest]
-    belief_type: str = "inference"
+    belief_type: BeliefType = BeliefType.INFERENCE
     tags: list[str] = Field(default_factory=list)
     source_agent: str = ""
 
 
 class RetractRequest(BaseModel):
-    evidence_id: str
+    evidence_id: UUID
 
 
 class ReviseRequest(BaseModel):
-    belief_id: str
+    belief_id: UUID
     evidence: EvidenceRequest
 
 
@@ -95,10 +98,10 @@ class BeliefListResponse(BaseModel):
 
 
 class OpenFrameRequest(BaseModel):
-    query_id: str
-    goal_id: str | None = None
-    top_k: int = 20
-    ttl_seconds: int = 300
+    query_id: UUID
+    goal_id: UUID | None = None
+    top_k: int = Field(default=20, ge=1, le=1000)
+    ttl_seconds: int = Field(default=300, ge=10, le=3600)
 
 
 class BeliefSnapshotResponse(BaseModel):
@@ -136,9 +139,21 @@ class FrameContextResponse(BaseModel):
     step_count: int
 
 
+class NewBeliefPayload(BaseModel):
+    claim: str = Field(min_length=1)
+    evidence: list[EvidenceRequest] = Field(default_factory=list)
+    belief_type: BeliefType = BeliefType.INFERENCE
+    tags: list[str] = Field(default_factory=list)
+
+
+class RevisionPayload(BaseModel):
+    belief_id: UUID
+    evidence: EvidenceRequest
+
+
 class CommitFrameRequest(BaseModel):
-    new_beliefs: list[dict[str, Any]] = Field(default_factory=list)
-    revisions: list[dict[str, Any]] = Field(default_factory=list)
+    new_beliefs: list[NewBeliefPayload] = Field(default_factory=list)
+    revisions: list[RevisionPayload] = Field(default_factory=list)
 
 
 class CommitFrameResponse(BaseModel):

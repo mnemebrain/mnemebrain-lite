@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from mnemebrain_core.api.schemas import (
     AddToFrameRequest,
@@ -33,27 +33,19 @@ from mnemebrain_core.working_memory import WorkingMemoryManager
 
 router = APIRouter()
 
-# Set by app.py at startup
-_memory: BeliefMemory | None = None
-_wm_manager: WorkingMemoryManager | None = None
 
-
-def set_memory(memory: BeliefMemory) -> None:
-    global _memory, _wm_manager
-    _memory = memory
-    _wm_manager = WorkingMemoryManager(memory)
-
-
-def get_memory() -> BeliefMemory:
-    if _memory is None:
+def get_memory(request: Request) -> BeliefMemory:
+    mem = getattr(request.app.state, "memory", None)
+    if mem is None:
         raise RuntimeError("BeliefMemory not initialized")
-    return _memory
+    return mem
 
 
-def get_wm_manager() -> WorkingMemoryManager:
-    if _wm_manager is None:
+def get_wm_manager(request: Request) -> WorkingMemoryManager:
+    wm = getattr(request.app.state, "wm_manager", None)
+    if wm is None:
         raise RuntimeError("WorkingMemoryManager not initialized")
-    return _wm_manager
+    return wm
 
 
 @router.get("/health")
@@ -62,22 +54,21 @@ async def health():
 
 
 @router.post("/believe", response_model=BeliefResponse)
-async def believe(req: BelieveRequest):
-    mem = get_memory()
+async def believe(req: BelieveRequest, mem: BeliefMemory = Depends(get_memory)):
     result = mem.believe(
         claim=req.claim,
         evidence_items=[
             EvidenceInput(
                 source_ref=e.source_ref,
                 content=e.content,
-                polarity=e.polarity,
+                polarity=e.polarity.value,
                 weight=e.weight,
                 reliability=e.reliability,
                 scope=e.scope,
             )
             for e in req.evidence
         ],
-        belief_type=BeliefType(req.belief_type),
+        belief_type=req.belief_type,
         tags=req.tags,
         source_agent=req.source_agent,
     )
@@ -90,9 +81,8 @@ async def believe(req: BelieveRequest):
 
 
 @router.post("/retract", response_model=list[BeliefResponse])
-async def retract(req: RetractRequest):
-    mem = get_memory()
-    results = mem.retract(UUID(req.evidence_id))
+async def retract(req: RetractRequest, mem: BeliefMemory = Depends(get_memory)):
+    results = mem.retract(req.evidence_id)
     return [
         BeliefResponse(
             id=str(r.id),
@@ -105,8 +95,7 @@ async def retract(req: RetractRequest):
 
 
 @router.get("/explain", response_model=ExplanationResponse)
-async def explain(claim: str):
-    mem = get_memory()
+async def explain(claim: str, mem: BeliefMemory = Depends(get_memory)):
     result = mem.explain(claim)
     if result is None:
         raise HTTPException(status_code=404, detail="Belief not found")
@@ -156,11 +145,11 @@ async def explain(claim: str):
 @router.get("/search", response_model=SearchResponse)
 async def search(
     query: str,
+    mem: BeliefMemory = Depends(get_memory),
     limit: int = 10,
     alpha: float = 0.7,
     conflict_policy: str = "surface",
 ):
-    mem = get_memory()
     try:
         policy = ConflictPolicy(conflict_policy)
     except ValueError as exc:
@@ -168,7 +157,9 @@ async def search(
             status_code=422,
             detail=f"Invalid conflict_policy: {conflict_policy}",
         ) from exc
-    results = mem.search(query=query, limit=limit, rank_alpha=alpha, conflict_policy=policy)
+    results = mem.search(
+        query=query, limit=limit, rank_alpha=alpha, conflict_policy=policy
+    )
     return SearchResponse(
         results=[
             SearchResultResponse(
@@ -186,6 +177,7 @@ async def search(
 
 @router.get("/beliefs", response_model=BeliefListResponse)
 async def list_beliefs(
+    mem: BeliefMemory = Depends(get_memory),
     truth_state: str | None = None,
     belief_type: str | None = None,
     tag: str | None = None,
@@ -194,25 +186,23 @@ async def list_beliefs(
     limit: int = 50,
     offset: int = 0,
 ):
-    mem = get_memory()
-
     try:
         truth_states = (
-            [TruthState(s) for s in truth_state.split(",")]
-            if truth_state else None
+            [TruthState(s) for s in truth_state.split(",")] if truth_state else None
         )
     except ValueError as exc:
         raise HTTPException(
-            status_code=422, detail=f"Invalid truth_state: {truth_state}",
+            status_code=422,
+            detail=f"Invalid truth_state: {truth_state}",
         ) from exc
     try:
         belief_types = (
-            [BeliefType(s) for s in belief_type.split(",")]
-            if belief_type else None
+            [BeliefType(s) for s in belief_type.split(",")] if belief_type else None
         )
     except ValueError as exc:
         raise HTTPException(
-            status_code=422, detail=f"Invalid belief_type: {belief_type}",
+            status_code=422,
+            detail=f"Invalid belief_type: {belief_type}",
         ) from exc
 
     beliefs, total = mem.list_beliefs(
@@ -247,14 +237,13 @@ async def list_beliefs(
 
 
 @router.post("/revise", response_model=BeliefResponse)
-async def revise(req: ReviseRequest):
-    mem = get_memory()
+async def revise(req: ReviseRequest, mem: BeliefMemory = Depends(get_memory)):
     result = mem.revise(
-        belief_id=UUID(req.belief_id),
+        belief_id=req.belief_id,
         new_evidence=EvidenceInput(
             source_ref=req.evidence.source_ref,
             content=req.evidence.content,
-            polarity=req.evidence.polarity,
+            polarity=req.evidence.polarity.value,
             weight=req.evidence.weight,
             reliability=req.evidence.reliability,
             scope=req.evidence.scope,
@@ -284,11 +273,12 @@ def _snapshot_to_response(snap) -> BeliefSnapshotResponse:
 
 
 @router.post("/frame/open", response_model=OpenFrameResponse)
-async def open_frame(req: OpenFrameRequest):
-    wm = get_wm_manager()
+async def open_frame(
+    req: OpenFrameRequest, wm: WorkingMemoryManager = Depends(get_wm_manager)
+):
     frame = wm.open_frame(
-        query_id=UUID(req.query_id),
-        goal_id=UUID(req.goal_id) if req.goal_id else None,
+        query_id=req.query_id,
+        goal_id=req.goal_id,
         top_k=req.top_k,
         ttl_seconds=req.ttl_seconds,
     )
@@ -307,8 +297,11 @@ async def open_frame(req: OpenFrameRequest):
 
 
 @router.post("/frame/{frame_id}/add", response_model=BeliefSnapshotResponse)
-async def add_to_frame(frame_id: str, req: AddToFrameRequest):
-    wm = get_wm_manager()
+async def add_to_frame(
+    frame_id: str,
+    req: AddToFrameRequest,
+    wm: WorkingMemoryManager = Depends(get_wm_manager),
+):
     try:
         snapshot = wm.add_to_frame(UUID(frame_id), req.claim)
     except ValueError as e:
@@ -319,8 +312,11 @@ async def add_to_frame(frame_id: str, req: AddToFrameRequest):
 
 
 @router.post("/frame/{frame_id}/scratchpad", status_code=204)
-async def write_scratchpad(frame_id: str, req: ScratchpadRequest):
-    wm = get_wm_manager()
+async def write_scratchpad(
+    frame_id: str,
+    req: ScratchpadRequest,
+    wm: WorkingMemoryManager = Depends(get_wm_manager),
+):
     try:
         wm.write_scratchpad(UUID(frame_id), req.key, req.value)
     except ValueError as e:
@@ -328,8 +324,9 @@ async def write_scratchpad(frame_id: str, req: ScratchpadRequest):
 
 
 @router.get("/frame/{frame_id}/context", response_model=FrameContextResponse)
-async def get_frame_context(frame_id: str):
-    wm = get_wm_manager()
+async def get_frame_context(
+    frame_id: str, wm: WorkingMemoryManager = Depends(get_wm_manager)
+):
     try:
         ctx = wm.get_frame_context(UUID(frame_id))
     except ValueError as e:
@@ -345,8 +342,11 @@ async def get_frame_context(frame_id: str):
 
 
 @router.post("/frame/{frame_id}/commit", response_model=CommitFrameResponse)
-async def commit_frame(frame_id: str, req: CommitFrameRequest):
-    wm = get_wm_manager()
+async def commit_frame(
+    frame_id: str,
+    req: CommitFrameRequest,
+    wm: WorkingMemoryManager = Depends(get_wm_manager),
+):
     try:
         result = wm.commit_frame(
             UUID(frame_id),
@@ -363,8 +363,9 @@ async def commit_frame(frame_id: str, req: CommitFrameRequest):
 
 
 @router.delete("/frame/{frame_id}", status_code=204)
-async def close_frame(frame_id: str):
-    wm = get_wm_manager()
+async def close_frame(
+    frame_id: str, wm: WorkingMemoryManager = Depends(get_wm_manager)
+):
     try:
         wm.close_frame(UUID(frame_id))
     except ValueError as e:

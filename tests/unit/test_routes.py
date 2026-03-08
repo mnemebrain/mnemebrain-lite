@@ -1,13 +1,17 @@
 """Tests for uncovered route branches."""
 
 import pytest
+from unittest.mock import MagicMock
 
-from mnemebrain_core.api.routes import get_memory, set_memory
+from starlette.datastructures import State
+
+from mnemebrain_core.api.routes import get_memory
 
 
 class TestGetMemoryUninitialized:
     def test_raises_when_not_initialized(self):
-        """get_memory raises RuntimeError when _memory is None (line 33)."""
-        set_memory(None)
+        """get_memory raises RuntimeError when memory is not on app.state."""
+        request = MagicMock()
+        request.app.state = State()
         with pytest.raises(RuntimeError, match="not initialized"):
-            get_memory()
+            get_memory(request)

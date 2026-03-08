@@ -8,7 +8,12 @@ from uuid import UUID
 
 from mnemebrain_core.engine import compute_confidence, compute_truth_state
 from mnemebrain_core.models import (
-    Belief, BeliefType, ConflictPolicy, Evidence, Polarity, TruthState,
+    Belief,
+    BeliefType,
+    ConflictPolicy,
+    Evidence,
+    Polarity,
+    TruthState,
 )
 from mnemebrain_core.providers.base import EmbeddingProvider, EvidenceInput
 from mnemebrain_core.store import KuzuGraphStore
@@ -57,16 +62,19 @@ class BeliefMemory:
             from mnemebrain_core.providers.embeddings.sentence_transformers import (
                 SentenceTransformerProvider,
             )
+
             return SentenceTransformerProvider()
         except ImportError:
             pass
         # 2. OpenAI API (requires OPENAI_API_KEY)
         try:
             import os
+
             if os.environ.get("OPENAI_API_KEY"):
                 from mnemebrain_core.providers.embeddings.openai import (
                     OpenAIEmbeddingProvider,
                 )
+
                 return OpenAIEmbeddingProvider()
         except ImportError:
             pass
@@ -136,6 +144,7 @@ class BeliefMemory:
             return []
 
         evidence.valid = False
+        self._store.update_evidence(evidence)
         affected = self._store.find_beliefs_using(evidence_id)
 
         results = []
@@ -233,12 +242,18 @@ class BeliefMemory:
         raw_matches = self._store.find_similar(embedding, threshold=0.3)
 
         scored = [
-            (belief, sim, belief.confidence, rank_score(sim, belief.confidence, rank_alpha))
+            (
+                belief,
+                sim,
+                belief.confidence,
+                rank_score(sim, belief.confidence, rank_alpha),
+            )
             for belief, sim in raw_matches
         ]
 
         filtered_pairs = apply_conflict_policy(
-            [(b, rs) for b, _, _, rs in scored], conflict_policy,
+            [(b, rs) for b, _, _, rs in scored],
+            conflict_policy,
         )
         filtered_ids = {id(b) for b, _ in filtered_pairs}
         scored = [item for item in scored if id(item[0]) in filtered_ids]

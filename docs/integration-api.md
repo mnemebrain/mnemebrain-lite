@@ -1,6 +1,6 @@
 # MnemeBrain Lite — Integration API Reference
 
-> **Version:** 0.1.0
+> **Version:** 0.1.0a3
 > **Base URL:** `http://localhost:8000`
 > **Content-Type:** `application/json`
 
@@ -16,11 +16,17 @@ MnemeBrain Lite is a lightweight belief memory system for LLM agents. It provide
 # Full install (Linux / Apple Silicon)
 uv sync --extra dev --extra embeddings
 
-# Lite install (Intel Mac — no embeddings)
+# OpenAI embeddings (any platform, requires OPENAI_API_KEY)
+uv sync --extra dev --extra openai
+
+# Without embeddings (Intel Mac — torch 2.3+ has no x86_64 wheels)
 uv sync --extra dev
 
-# Start the server
-uv run python -m mnemebrain_core [DB_PATH]
+# Run tests
+uv run pytest tests/ -v
+
+# Start API server
+uv run python -m mnemebrain_core
 # Default DB_PATH: ./mnemebrain_data
 # Listens on 0.0.0.0:8000
 ```
@@ -244,6 +250,317 @@ curl "http://localhost:8000/explain?claim=Earth%20orbits%20the%20Sun"
 
 ---
 
+### `GET /search` (requires embeddings)
+
+Semantic search over beliefs with ranked scoring. Returns beliefs ordered by a composite rank score combining similarity, confidence, and stability.
+
+**Query Parameters:**
+
+| Param             | Type    | Required | Default     | Description                                      |
+|-------------------|---------|----------|-------------|--------------------------------------------------|
+| `query`           | `string`| Yes      |             | Natural language search query                    |
+| `limit`           | `int`   | No       | `10`        | Maximum results to return                        |
+| `alpha`           | `float` | No       | `0.7`       | Similarity weight in rank score (0–1)            |
+| `conflict_policy` | `string`| No       | `"surface"` | One of: `surface`, `conservative`, `optimistic`  |
+
+**Conflict policies:**
+- `surface` — include all beliefs, including contradictions
+- `conservative` — exclude beliefs with `BOTH` truth state
+- `optimistic` — for `BOTH` beliefs, treat as `TRUE`
+
+**Response:** `SearchResponse`
+
+```json
+{
+  "results": [
+    {
+      "belief_id": "550e8400-e29b-41d4-a716-446655440000",
+      "claim": "user is vegetarian",
+      "truth_state": "true",
+      "confidence": 0.82,
+      "similarity": 0.95,
+      "rank_score": 0.87
+    }
+  ]
+}
+```
+
+**Example:**
+
+```bash
+curl "http://localhost:8000/search?query=vegetarian&limit=5&alpha=0.7"
+```
+
+---
+
+### `GET /beliefs`
+
+List beliefs with filtering and pagination. Always available.
+
+**Query Parameters:**
+
+| Param            | Type    | Required | Default | Description                                         |
+|------------------|---------|----------|---------|-----------------------------------------------------|
+| `truth_state`    | `string`| No       |         | Comma-separated: `true`, `false`, `both`, `neither` |
+| `belief_type`    | `string`| No       |         | Comma-separated: `fact`, `preference`, `inference`, `prediction` |
+| `tag`            | `string`| No       |         | Filter by tag                                       |
+| `min_confidence` | `float` | No       | `0.0`   | Minimum confidence threshold                        |
+| `max_confidence` | `float` | No       | `1.0`   | Maximum confidence threshold                        |
+| `limit`          | `int`   | No       | `50`    | Page size                                           |
+| `offset`         | `int`   | No       | `0`     | Pagination offset                                   |
+
+**Response:** `BeliefListResponse`
+
+```json
+{
+  "beliefs": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "claim": "user is vegetarian",
+      "belief_type": "preference",
+      "truth_state": "both",
+      "confidence": 0.55,
+      "tag_count": 1,
+      "evidence_count": 2,
+      "created_at": "2026-03-08T12:00:00",
+      "last_revised": "2026-03-08T14:30:00"
+    }
+  ],
+  "total": 42,
+  "offset": 0,
+  "limit": 50
+}
+```
+
+**Example:**
+
+```bash
+curl "http://localhost:8000/beliefs?truth_state=BOTH&min_confidence=0.5"
+```
+
+---
+
+### `POST /frame/open`
+
+Open a working memory frame — an active context buffer for multi-step reasoning episodes. Frames have a TTL and hold belief snapshots for the duration of a reasoning task.
+
+**Request Body:**
+
+| Field          | Type          | Required | Default | Description                          |
+|----------------|---------------|----------|---------|--------------------------------------|
+| `query_id`     | `string (UUID)` | Yes    |         | ID of the query/task this frame serves |
+| `goal_id`      | `string (UUID)` | No     | `null`  | Optional goal this frame is working toward |
+| `top_k`        | `int`         | No       | `20`    | Max beliefs to load (1–1000)         |
+| `ttl_seconds`  | `int`         | No       | `300`   | Frame expiry in seconds (10–3600)    |
+
+**Response:** `OpenFrameResponse`
+
+```json
+{
+  "frame_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "beliefs_loaded": 5,
+  "conflicts": 1,
+  "snapshots": [
+    {
+      "belief_id": "550e8400-...",
+      "claim": "user is vegetarian",
+      "truth_state": "both",
+      "confidence": 0.55,
+      "belief_type": "preference",
+      "evidence_count": 2,
+      "conflict": true
+    }
+  ]
+}
+```
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8000/frame/open \
+  -H "Content-Type: application/json" \
+  -d '{"query_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "top_k": 20, "ttl_seconds": 300}'
+```
+
+---
+
+### `POST /frame/{frame_id}/add`
+
+Add a belief to an open frame by claim text. Returns the belief snapshot if found.
+
+**Request Body:**
+
+| Field   | Type     | Required | Description        |
+|---------|----------|----------|--------------------|
+| `claim` | `string` | Yes      | Claim to look up   |
+
+**Response:** `BeliefSnapshotResponse`
+
+```json
+{
+  "belief_id": "550e8400-...",
+  "claim": "user is vegetarian",
+  "truth_state": "both",
+  "confidence": 0.55,
+  "belief_type": "preference",
+  "evidence_count": 2,
+  "conflict": true
+}
+```
+
+**Errors:**
+- `404` — Frame not found or belief not found for claim.
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8000/frame/abc123/add \
+  -H "Content-Type: application/json" \
+  -d '{"claim": "user is vegetarian"}'
+```
+
+---
+
+### `POST /frame/{frame_id}/scratchpad`
+
+Write a key-value pair to the frame's scratchpad. The scratchpad is a free-form dictionary for intermediate reasoning state. Returns `204 No Content`.
+
+**Request Body:**
+
+| Field   | Type  | Required | Description            |
+|---------|-------|----------|------------------------|
+| `key`   | `string` | Yes   | Scratchpad key         |
+| `value` | `any`    | Yes   | Arbitrary JSON value   |
+
+**Errors:**
+- `404` — Frame not found.
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8000/frame/abc123/scratchpad \
+  -H "Content-Type: application/json" \
+  -d '{"key": "reasoning_step", "value": "checking dietary preferences"}'
+```
+
+---
+
+### `GET /frame/{frame_id}/context`
+
+Get the full frame context, suitable for injecting into an LLM prompt. Returns all active beliefs, conflicts, scratchpad state, and step count.
+
+**Response:** `FrameContextResponse`
+
+```json
+{
+  "active_query": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "active_goal": null,
+  "beliefs": [
+    {
+      "belief_id": "550e8400-...",
+      "claim": "user is vegetarian",
+      "truth_state": "both",
+      "confidence": 0.55,
+      "belief_type": "preference",
+      "evidence_count": 2,
+      "conflict": true
+    }
+  ],
+  "scratchpad": {"reasoning_step": "checking dietary preferences"},
+  "conflicts": [
+    {
+      "belief_id": "550e8400-...",
+      "claim": "user is vegetarian",
+      "truth_state": "both",
+      "confidence": 0.55,
+      "belief_type": "preference",
+      "evidence_count": 2,
+      "conflict": true
+    }
+  ],
+  "step_count": 3
+}
+```
+
+**Errors:**
+- `404` — Frame not found.
+
+**Example:**
+
+```bash
+curl http://localhost:8000/frame/abc123/context
+```
+
+---
+
+### `POST /frame/{frame_id}/commit`
+
+Commit frame results back to the belief graph. Creates new beliefs and/or revises existing ones, then closes the frame.
+
+**Request Body:**
+
+| Field         | Type                 | Required | Default | Description                    |
+|---------------|----------------------|----------|---------|--------------------------------|
+| `new_beliefs` | `NewBeliefPayload[]` | No       | `[]`    | New beliefs to create          |
+| `revisions`   | `RevisionPayload[]`  | No       | `[]`    | Revisions to apply             |
+
+**NewBeliefPayload:**
+
+| Field         | Type              | Required | Default       | Description          |
+|---------------|-------------------|----------|---------------|----------------------|
+| `claim`       | `string`          | Yes      |               | Claim text           |
+| `evidence`    | `EvidenceInput[]` | No       | `[]`          | Supporting evidence  |
+| `belief_type` | `string`          | No       | `"inference"` | Belief type          |
+| `tags`        | `string[]`        | No       | `[]`          | Tags                 |
+
+**RevisionPayload:**
+
+| Field       | Type            | Required | Description              |
+|-------------|-----------------|----------|--------------------------|
+| `belief_id` | `string (UUID)` | Yes      | Belief to revise         |
+| `evidence`  | `EvidenceInput` | Yes      | New evidence to add      |
+
+**Response:** `CommitFrameResponse`
+
+```json
+{
+  "frame_id": "abc123",
+  "beliefs_created": 2,
+  "beliefs_revised": 1
+}
+```
+
+**Errors:**
+- `404` — Frame not found.
+
+**Example:**
+
+```bash
+curl -X POST http://localhost:8000/frame/abc123/commit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "new_beliefs": [{"claim": "user prefers plant-based meals", "belief_type": "inference"}],
+    "revisions": []
+  }'
+```
+
+---
+
+### `DELETE /frame/{frame_id}`
+
+Close and discard a frame without committing. Returns `204 No Content`.
+
+**Errors:**
+- `404` — Frame not found.
+
+**Example:**
+
+```bash
+curl -X DELETE http://localhost:8000/frame/abc123
+```
+
+---
+
 ## Data Model
 
 ### Truth States (Belnap's Four-Valued Logic)
@@ -283,9 +600,11 @@ Claims are deduplicated via embedding similarity. When a new claim has cosine si
 
 ## Embedding Provider
 
-MnemeBrain Lite uses **sentence-transformers** with the `all-MiniLM-L6-v2` model by default. No API keys required — runs locally.
+MnemeBrain Lite auto-detects the best available embedding provider:
 
-On platforms where `sentence-transformers` is unavailable, you can provide a custom `EmbeddingProvider`:
+1. **sentence-transformers** (`all-MiniLM-L6-v2`) — local, no API keys. Install with `pip install mnemebrain-lite[embeddings]`.
+2. **OpenAI** (`text-embedding-3-small`) — requires `OPENAI_API_KEY` in environment or `.env` file. Install with `pip install mnemebrain-lite[openai]`.
+3. **Custom** — provide your own `EmbeddingProvider` implementation.
 
 ```python
 from mnemebrain_core.providers.base import EmbeddingProvider
@@ -297,6 +616,8 @@ class MyProvider(EmbeddingProvider):
 
 mem = BeliefMemory(db_path="./data", embedding_provider=MyProvider())
 ```
+
+Without any embedding provider, `believe` and `explain` return **501 Not Implemented**. All other endpoints work.
 
 ## Architecture
 

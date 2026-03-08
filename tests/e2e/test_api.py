@@ -29,7 +29,17 @@ def app():
     tmpdir = tempfile.mkdtemp()
     db_path = os.path.join(tmpdir, "test_db")
     application = create_app(db_path=db_path)
+    # ASGITransport does not trigger lifespan events,
+    # so we manually initialize app.state for testing.
+    from mnemebrain_core.memory import BeliefMemory
+    from mnemebrain_core.working_memory import WorkingMemoryManager
+
+    memory = BeliefMemory(db_path=db_path)
+    wm_manager = WorkingMemoryManager(memory)
+    application.state.memory = memory
+    application.state.wm_manager = wm_manager
     yield application
+    memory.close()
     shutil.rmtree(tmpdir, ignore_errors=True)
 
 

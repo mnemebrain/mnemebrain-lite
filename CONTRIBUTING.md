@@ -13,7 +13,7 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 ```bash
 # Clone the repository
-git clone git@github.com:mnemebrain/cc-mnemebrain.git
+git clone git@github.com:mnemebrain/mnemebrain-lite.git
 cd mnemebrain-lite
 
 # Install dependencies (including dev extras)
@@ -30,19 +30,34 @@ uv run pytest tests/integration/ -v -m integration
 
 # Run e2e tests (full API tests)
 uv run pytest tests/e2e/ -v -m e2e
+
+# Lint (ruff check + format)
+uv run ruff check src/ tests/
+uv run ruff format --check src/ tests/
+
+# Auto-fix lint issues
+uv run ruff check --fix src/ tests/
+uv run ruff format src/ tests/
+
+# Type check (requires pyright install)
+uv run pip install pyright
+uv run pyright src/
 ```
 
 ## Project Structure
 
 ```
-src/mnemebrain/
+src/mnemebrain_core/
 ├── models.py          # Core data models (Belief, Evidence, TruthState)
 ├── engine.py          # Pure computation functions (truth state, confidence, decay)
 ├── store.py           # KuzuGraphStore — embedded graph database
 ├── memory.py          # BeliefMemory — the 4 core operations
+├── working_memory.py  # WorkingMemoryFrame — active context for multi-step reasoning
 ├── providers/
 │   ├── base.py        # Abstract EmbeddingProvider interface
-│   └── embeddings/    # Embedding provider implementations
+│   └── embeddings/
+│       ├── sentence_transformers.py  # Local embeddings (all-MiniLM-L6-v2)
+│       └── openai.py                # OpenAI embeddings (text-embedding-3-small)
 └── api/
     ├── app.py         # FastAPI application factory
     ├── routes.py      # REST endpoint handlers
@@ -76,9 +91,10 @@ Open an issue using the **Feature Request** template. Describe:
 2. Create a feature branch: `git checkout -b feat/your-feature`
 3. Write tests for your changes
 4. Ensure all tests pass: `uv run pytest tests/ -v`
-5. Follow the code style (we use ruff for linting)
-6. Commit with conventional commits: `feat(scope): description`
-7. Push and open a Pull Request
+5. Run lint and format: `uv run ruff check src/ tests/ && uv run ruff format --check src/ tests/`
+6. Follow the code style (we use ruff for linting and formatting)
+7. Commit with conventional commits: `feat(scope): description`
+8. Push and open a Pull Request
 
 ### Commit Convention
 

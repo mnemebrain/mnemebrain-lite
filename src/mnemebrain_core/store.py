@@ -107,6 +107,14 @@ class KuzuGraphStore:
         row = result.get_next()
         return Evidence.model_validate(json.loads(row[0]))
 
+    def update_evidence(self, evidence: Evidence) -> None:
+        """Update an evidence node's data in the store."""
+        ev_json = json.dumps(evidence.model_dump(mode="json"))
+        self._conn.execute(
+            "MATCH (e:EvidenceNode {id: $id}) SET e.data = $data",
+            parameters={"id": str(evidence.id), "data": ev_json},
+        )
+
     def find_beliefs_using(self, evidence_id: UUID) -> list[Belief]:
         """Find all beliefs that reference a given evidence item."""
         result = self._conn.execute(
@@ -181,7 +189,9 @@ class KuzuGraphStore:
             filtered = [b for b in filtered if b.belief_type in belief_types]
         if tag:
             filtered = [b for b in filtered if tag in b.tags]
-        filtered = [b for b in filtered if min_confidence <= b.confidence <= max_confidence]
+        filtered = [
+            b for b in filtered if min_confidence <= b.confidence <= max_confidence
+        ]
 
         filtered.sort(key=lambda b: b.confidence, reverse=True)
         total = len(filtered)

@@ -24,6 +24,7 @@ class FrameStatus(str, Enum):
 @dataclass
 class BeliefSnapshot:  # pylint: disable=too-many-instance-attributes
     """Point-in-time snapshot of a belief loaded into working memory."""
+
     belief_id: UUID
     claim: str
     truth_state: TruthState
@@ -37,6 +38,7 @@ class BeliefSnapshot:  # pylint: disable=too-many-instance-attributes
 @dataclass
 class FrameContext:
     """Active context of a frame for LLM prompt injection."""
+
     active_query: UUID
     active_goal: UUID | None
     beliefs: list[BeliefSnapshot]
@@ -48,6 +50,7 @@ class FrameContext:
 @dataclass
 class FrameCommitResult:
     """Result of committing a frame back to the belief graph."""
+
     frame_id: UUID
     beliefs_created: int
     beliefs_revised: int
@@ -169,10 +172,14 @@ class WorkingMemoryManager:
     def commit_frame(
         self,
         frame_id: UUID,
-        new_beliefs: list[dict[str, Any]] | None = None,
-        revisions: list[dict[str, Any]] | None = None,
+        new_beliefs: list[Any] | None = None,
+        revisions: list[Any] | None = None,
     ) -> FrameCommitResult:
-        """Commit frame results back to the belief graph."""
+        """Commit frame results back to the belief graph.
+
+        Accepts typed NewBeliefPayload/RevisionPayload objects from the API
+        schemas, or raw dicts for backwards compatibility.
+        """
         from mnemebrain_core.providers.base import EvidenceInput
 
         frame = self._frames.get(frame_id)
@@ -188,20 +195,24 @@ class WorkingMemoryManager:
             for payload in new_beliefs:
                 evidence_items = [
                     EvidenceInput(
-                        source_ref=e.get("source_ref", ""),
-                        content=e.get("content", ""),
-                        polarity=e.get("polarity", "supports"),
-                        weight=e.get("weight", 0.7),
-                        reliability=e.get("reliability", 0.8),
-                        scope=e.get("scope"),
+                        source_ref=e.source_ref,
+                        content=e.content,
+                        polarity=e.polarity.value
+                        if hasattr(e.polarity, "value")
+                        else e.polarity,
+                        weight=e.weight,
+                        reliability=e.reliability,
+                        scope=e.scope,
                     )
-                    for e in payload.get("evidence", [])
+                    for e in payload.evidence
                 ]
                 self._memory.believe(
-                    claim=payload["claim"],
+                    claim=payload.claim,
                     evidence_items=evidence_items,
-                    belief_type=BeliefType(payload.get("belief_type", "inference")),
-                    tags=payload.get("tags", []),
+                    belief_type=payload.belief_type
+                    if hasattr(payload.belief_type, "value")
+                    else BeliefType(payload.belief_type),
+                    tags=payload.tags,
                     source_agent=frame.source_agent,
                 )
                 beliefs_created += 1
@@ -209,14 +220,16 @@ class WorkingMemoryManager:
         if revisions:
             for rev in revisions:
                 ev = EvidenceInput(
-                    source_ref=rev["evidence"]["source_ref"],
-                    content=rev["evidence"]["content"],
-                    polarity=rev["evidence"]["polarity"],
-                    weight=rev["evidence"].get("weight", 0.7),
-                    reliability=rev["evidence"].get("reliability", 0.8),
-                    scope=rev["evidence"].get("scope"),
+                    source_ref=rev.evidence.source_ref,
+                    content=rev.evidence.content,
+                    polarity=rev.evidence.polarity.value
+                    if hasattr(rev.evidence.polarity, "value")
+                    else rev.evidence.polarity,
+                    weight=rev.evidence.weight,
+                    reliability=rev.evidence.reliability,
+                    scope=rev.evidence.scope,
                 )
-                self._memory.revise(UUID(rev["belief_id"]), ev)
+                self._memory.revise(rev.belief_id, ev)
                 beliefs_revised += 1
 
         frame.status = FrameStatus.COMMITTED
@@ -259,17 +272,20 @@ class WorkingMemoryManager:
         """Garbage collect expired frames."""
         now = datetime.now(timezone.utc)
         expired_ids = [
-            fid for fid, frame in self._frames.items()
-            if frame.expires_at and now > frame.expires_at
-               and frame.status == FrameStatus.ACTIVE
+            fid
+            for fid, frame in self._frames.items()
+            if frame.expires_at
+            and now > frame.expires_at
+            and frame.status == FrameStatus.ACTIVE
         ]
         for fid in expired_ids:
             self._frames[fid].status = FrameStatus.EXPIRED
 
         stale_ids = [
-            fid for fid, frame in self._frames.items()
+            fid
+            for fid, frame in self._frames.items()
             if frame.status != FrameStatus.ACTIVE
-               and (now - frame.created_at).total_seconds() > 3600
+            and (now - frame.created_at).total_seconds() > 3600
         ]
         for fid in stale_ids:
             del self._frames[fid]

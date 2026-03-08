@@ -36,7 +36,7 @@ MnemeBrain was built to measure and close this gap. It stores **beliefs**, not t
 
 ## Benchmark Results
 
-**Belief Maintenance Benchmark (BMB)** — 30 tasks · 5 categories · 62 checks
+**Belief Maintenance Benchmark (BMB)** — 48 tasks · 8 categories · ~100 checks
 
 ```
   mnemebrain           ████████████████████ 100%
@@ -151,6 +151,8 @@ uv run pytest tests/ -v
 
 # Start API server
 uv run python -m mnemebrain_core
+# Default DB_PATH: ./mnemebrain_data
+# Listens on 0.0.0.0:8000
 ```
 
 > **Intel Mac note:** `sentence-transformers` requires PyTorch, which no longer ships x86_64 macOS wheels (torch 2.3+). Use `mnemebrain-lite[openai]` instead — it works on any platform. Without any embedding provider, `/believe` and `/explain` return **501 Not Implemented**. All other endpoints work.
@@ -316,15 +318,13 @@ src/mnemebrain_core/
 | 3 | AGM revision policies + ATTACKS edges | ✅ Shipped |
 | 4 | Reconsolidation windows + GoalNode | ✅ Shipped |
 | 4.5 | PolicyNode + EWMA learning + blame attribution | ✅ Shipped |
-| 5 | ConsolidationDaemon + HippoRAG retrieval + pattern separation | ✅ Shipped |
-
-**Phase 5** adds three mechanisms that mirror biological memory consolidation: a background daemon that compresses episodic beliefs into semantic beliefs (hippocampal-neocortical transfer), HippoRAG-style Personalized PageRank retrieval for multi-hop queries that cosine similarity cannot express, and dentate-gyrus-inspired pattern separation at encoding to prevent embedding blur for similar-but-distinct beliefs. Target: < 5% false-merge rate, +20% multi-hop QA accuracy vs RAG baseline, sub-linear memory growth at scale. Full spec: [v4_phase5_consolidation_daemon.md](docs/plans/v4_phase5_consolidation_daemon.md).
+| 5 | ConsolidationDaemon + HippoRAG retrieval + pattern separation | Planned (see [mnemebrain](https://github.com/mnemebrain/mnemebrain)) |
 
 ---
 
 ## BMB Leaderboard
 
-The **Belief Maintenance Benchmark** is an open evaluation for agent memory systems. 30 tasks, 5 categories — contradiction detection, belief revision, evidence tracking, temporal decay, and counterfactual reasoning.
+The **Belief Maintenance Benchmark** is an open evaluation for agent memory systems. 48 tasks, 8 categories — contradiction detection, belief revision, evidence tracking, temporal decay, retraction, dedup, extraction, and lifecycle.
 
 | System | Score |
 |--------|------:|
