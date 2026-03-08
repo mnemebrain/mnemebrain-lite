@@ -35,19 +35,23 @@ class TripleRelationType(str, Enum):
 
 
 #: Stage 2 relation types that are currently active.
-STAGE_2_RELATIONS: frozenset[TripleRelationType] = frozenset({
-    TripleRelationType.ATTACKS,
-    TripleRelationType.SUPPORTS,
-    TripleRelationType.DEPENDS_ON,
-})
+STAGE_2_RELATIONS: frozenset[TripleRelationType] = frozenset(
+    {
+        TripleRelationType.ATTACKS,
+        TripleRelationType.SUPPORTS,
+        TripleRelationType.DEPENDS_ON,
+    }
+)
 
 #: Stage 3 relation types — reserved for future use.
-STAGE_3_RELATIONS: frozenset[TripleRelationType] = frozenset({
-    TripleRelationType.NARROWS,
-    TripleRelationType.OVERRIDES,
-    TripleRelationType.EXCEPTION_TO,
-    TripleRelationType.DERIVED_FROM,
-})
+STAGE_3_RELATIONS: frozenset[TripleRelationType] = frozenset(
+    {
+        TripleRelationType.NARROWS,
+        TripleRelationType.OVERRIDES,
+        TripleRelationType.EXCEPTION_TO,
+        TripleRelationType.DERIVED_FROM,
+    }
+)
 
 
 class TripleRelation(BaseModel):

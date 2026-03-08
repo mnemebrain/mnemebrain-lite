@@ -9,10 +9,7 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
-from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any
-from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
@@ -277,7 +274,9 @@ class TestSnapshotBelief:
         delta = datetime.now(timezone.utc) - snap.loaded_at
         assert abs(delta.total_seconds()) < 5
 
-    def test_snapshot_conflict_flag_false_for_true_belief(self, manager, memory_with_belief):
+    def test_snapshot_conflict_flag_false_for_true_belief(
+        self, manager, memory_with_belief
+    ):
         mem, belief_id, _ = memory_with_belief
         beliefs, _ = mem.list_beliefs(limit=100)
         belief = next(b for b in beliefs if b.id == belief_id)
@@ -624,7 +623,9 @@ class TestCommitFrame:
             ),
         )
 
-        result = manager.commit_frame(frame.id, new_beliefs=[new_payload], revisions=[rev])
+        result = manager.commit_frame(
+            frame.id, new_beliefs=[new_payload], revisions=[rev]
+        )
 
         assert result.beliefs_created == 1
         assert result.beliefs_revised == 1

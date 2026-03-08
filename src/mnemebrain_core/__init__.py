@@ -1,8 +1,8 @@
 """MnemeBrain Lite — The belief layer for AI agents."""
 
 try:
-    from importlib.metadata import version
+    from importlib.metadata import PackageNotFoundError, version
 
     __version__ = version("mnemebrain-lite")
-except Exception:
-    __version__ = "0.1.0a3"
+except (ImportError, PackageNotFoundError):
+    __version__ = "0.1.0a4"

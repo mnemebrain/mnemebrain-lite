@@ -36,7 +36,7 @@ def create_app(db_path: str = "./mnemebrain_data") -> FastAPI:
                 wm_manager.gc_frames()
 
         gc_task = asyncio.create_task(gc_loop())
-        app.state._gc_task = gc_task
+        app.state.gc_task = gc_task
         yield
         gc_task.cancel()
         memory.close()
@@ -56,7 +56,10 @@ def create_app(db_path: str = "./mnemebrain_data") -> FastAPI:
         return JSONResponse(
             status_code=501,
             content={
-                "detail": "Embedding provider not available. Install mnemebrain-lite[embeddings] or mnemebrain-lite[openai]."
+                "detail": (
+                    "Embedding provider not available. "
+                    "Install mnemebrain-lite[embeddings] or mnemebrain-lite[openai]."
+                )
             },
         )
 

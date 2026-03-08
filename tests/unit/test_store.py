@@ -121,7 +121,6 @@ class TestKuzuGraphStore:
         tags=None,
         confidence: float = 0.5,
     ) -> Belief:
-        from mnemebrain_core.models import TruthState, BeliefType
 
         kwargs: dict = {"claim": claim, "confidence": confidence}
         if truth_state is not None:
@@ -141,9 +140,7 @@ class TestKuzuGraphStore:
         store.upsert(b_true)
         store.upsert(b_false)
 
-        results, total = store.list_beliefs_filtered(
-            truth_states=[TruthState.TRUE]
-        )
+        results, total = store.list_beliefs_filtered(truth_states=[TruthState.TRUE])
         assert total == 1
         assert results[0].claim == "true belief"
 
@@ -237,6 +234,32 @@ class TestKuzuGraphStore:
     # ------------------------------------------------------------------
     # close (lines 210-213)
     # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # find_beliefs_using (lines 118-130)
+    # ------------------------------------------------------------------
+
+    def test_find_beliefs_using(self, store: KuzuGraphStore):
+        """find_beliefs_using returns beliefs linked to a given evidence."""
+        ev = Evidence(
+            belief_id=None,
+            source_ref="msg_fb",
+            content="finding evidence",
+            polarity=Polarity.SUPPORTS,
+            reliability=0.9,
+            weight=0.8,
+        )
+        belief = Belief(claim="belief using evidence", evidence=[ev])
+        store.upsert(belief, embedding=[0.5, 0.5, 0.5])
+
+        found = store.find_beliefs_using(ev.id)
+        assert len(found) == 1
+        assert found[0].id == belief.id
+
+    def test_find_beliefs_using_nonexistent(self, store: KuzuGraphStore):
+        """find_beliefs_using returns empty for nonexistent evidence."""
+        found = store.find_beliefs_using(uuid4())
+        assert found == []
 
     def test_close_is_callable(self, store: KuzuGraphStore):
         """close() is a no-op but must be reachable for coverage."""

@@ -352,11 +352,13 @@ class TestRelationIndexRead:
 
     def test_count_by_type(self):
         idx = RelationIndex()
-        idx.add_many([
-            _rel(relation_type=TripleRelationType.ATTACKS),
-            _rel(relation_type=TripleRelationType.ATTACKS),
-            _rel(relation_type=TripleRelationType.SUPPORTS),
-        ])
+        idx.add_many(
+            [
+                _rel(relation_type=TripleRelationType.ATTACKS),
+                _rel(relation_type=TripleRelationType.ATTACKS),
+                _rel(relation_type=TripleRelationType.SUPPORTS),
+            ]
+        )
         counts = idx.count_by_type()
         assert counts[TripleRelationType.ATTACKS] == 2
         assert counts[TripleRelationType.SUPPORTS] == 1

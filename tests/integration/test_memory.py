@@ -255,7 +255,6 @@ class TestSearch:
     def test_search_returns_ranked_results(self, memory: BeliefMemory):
         """search() returns (belief, similarity, confidence, rank_score) tuples."""
         self._seed(memory)
-        from mnemebrain_core.models import ConflictPolicy
 
         results = memory.search(query="hiking outdoors", limit=5)
         assert len(results) >= 1
@@ -465,8 +464,6 @@ class TestAutoDetectEmbedder:
             ),
         ):
             # Re-patch both inner imports inside _auto_detect_embedder
-            import importlib
-            import sys
 
             # We patch the class via its module; the function uses a local import
             # so we patch via sys.modules manipulation of the provider modules.

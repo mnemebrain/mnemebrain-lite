@@ -25,7 +25,7 @@ class TestVersion:
         ):
             import mnemebrain_core as mc
 
-            assert mc.__version__ == "0.1.0a3"
+            assert mc.__version__ == "0.1.0a4"
 
         # Restore the real module for subsequent tests.
         sys.modules.pop("mnemebrain_core", None)
