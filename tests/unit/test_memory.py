@@ -32,7 +32,9 @@ class FakeEmbedder(EmbeddingProvider):
 def memory():
     tmpdir = tempfile.mkdtemp()
     db_path = os.path.join(tmpdir, "test_mem")
-    m = BeliefMemory(db_path=db_path, embedding_provider=FakeEmbedder(), max_db_size=1 << 30)
+    m = BeliefMemory(
+        db_path=db_path, embedding_provider=FakeEmbedder(), max_db_size=1 << 30
+    )
     yield m
     m.close()
     shutil.rmtree(tmpdir, ignore_errors=True)
@@ -157,7 +159,9 @@ class TestGetEmbedder:
         tmpdir = tempfile.mkdtemp()
         db_path = os.path.join(tmpdir, "test_no_emb")
         try:
-            m = BeliefMemory(db_path=db_path, embedding_provider=FakeEmbedder(), max_db_size=1 << 30)
+            m = BeliefMemory(
+                db_path=db_path, embedding_provider=FakeEmbedder(), max_db_size=1 << 30
+            )
             m._embedder = None  # Force no embedder
             with pytest.raises(ImportError, match="No embedding provider"):
                 m._get_embedder()

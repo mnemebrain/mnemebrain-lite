@@ -74,7 +74,9 @@ def memory(tmpdb):
     """BeliefMemory backed by a throw-away Kuzu DB with a mock embedder."""
     from mnemebrain_core.memory import BeliefMemory
 
-    mem = BeliefMemory(db_path=tmpdb, embedding_provider=_FixedEmbedder(), max_db_size=1 << 30)
+    mem = BeliefMemory(
+        db_path=tmpdb, embedding_provider=_FixedEmbedder(), max_db_size=1 << 30
+    )
     yield mem
     mem.close()
 
