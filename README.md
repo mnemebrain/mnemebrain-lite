@@ -293,11 +293,12 @@ Full endpoint docs: [docs/integration-api.md](docs/integration-api.md)
 
 ```
 src/mnemebrain_core/
-├── models.py          # Belief, Evidence, TruthState, BeliefType
-├── engine.py          # Pure functions: compute_truth_state, confidence, decay
-├── store.py           # KuzuGraphStore — embedded graph DB
-├── memory.py          # BeliefMemory — 4 core operations + search/list
-├── working_memory.py  # WorkingMemoryFrame — active context for multi-step reasoning
+├── models.py            # Belief, Evidence, TruthState, BeliefType
+├── engine.py            # Pure functions: compute_truth_state, confidence, decay
+├── store.py             # KuzuGraphStore — embedded graph DB
+├── memory.py            # BeliefMemory — 4 core operations + search/list
+├── working_memory.py    # WorkingMemoryFrame — active context for multi-step reasoning
+├── triple_relations.py  # TripleRelation — typed inter-triple edges (attacks, supports, depends_on)
 ├── providers/
 │   ├── base.py        # Abstract EmbeddingProvider
 │   └── embeddings/    # sentence-transformers or OpenAI (optional)
