@@ -34,7 +34,7 @@ def app():
     from mnemebrain_core.memory import BeliefMemory
     from mnemebrain_core.working_memory import WorkingMemoryManager
 
-    memory = BeliefMemory(db_path=db_path)
+    memory = BeliefMemory(db_path=db_path, max_db_size=1 << 30)
     wm_manager = WorkingMemoryManager(memory)
     application.state.memory = memory
     application.state.wm_manager = wm_manager

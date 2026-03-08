@@ -14,8 +14,11 @@ from mnemebrain_core.models import Belief, BeliefType, Evidence, TruthState
 class KuzuGraphStore:
     """Persistent graph store backed by Kuzu embedded DB."""
 
-    def __init__(self, db_path: str) -> None:
-        self._db = kuzu.Database(db_path)
+    def __init__(self, db_path: str, *, max_db_size: int = 0) -> None:
+        kwargs: dict = {}
+        if max_db_size > 0:
+            kwargs["max_db_size"] = max_db_size
+        self._db = kuzu.Database(db_path, **kwargs)
         self._conn = kuzu.Connection(self._db)
         self._init_schema()
 

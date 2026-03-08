@@ -48,8 +48,10 @@ class BeliefMemory:
         self,
         db_path: str,
         embedding_provider: EmbeddingProvider | None = None,
+        *,
+        max_db_size: int = 0,
     ) -> None:
-        self._store = KuzuGraphStore(db_path)
+        self._store = KuzuGraphStore(db_path, max_db_size=max_db_size)
         self._embedder = embedding_provider
         if self._embedder is None:
             self._embedder = self._auto_detect_embedder()

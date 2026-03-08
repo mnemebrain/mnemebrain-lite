@@ -30,7 +30,7 @@ def memory():
     """Create a BeliefMemory with a temporary database."""
     tmpdir = tempfile.mkdtemp()
     db_path = os.path.join(tmpdir, "test_db")
-    mem = BeliefMemory(db_path=db_path)
+    mem = BeliefMemory(db_path=db_path, max_db_size=1 << 30)
     yield mem
     mem.close()
     shutil.rmtree(tmpdir, ignore_errors=True)
@@ -424,7 +424,7 @@ class TestGetEmbedder:
             mem = BeliefMemory.__new__(BeliefMemory)
             from mnemebrain_core.store import KuzuGraphStore
 
-            mem._store = KuzuGraphStore(db_path)
+            mem._store = KuzuGraphStore(db_path, max_db_size=1 << 30)
             mem._embedder = None
             with pytest.raises(ImportError, match="No embedding provider"):
                 mem._get_embedder()

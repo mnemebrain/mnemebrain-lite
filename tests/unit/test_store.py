@@ -15,7 +15,7 @@ from mnemebrain_core.store import KuzuGraphStore
 def store():
     tmpdir = tempfile.mkdtemp()
     db_path = os.path.join(tmpdir, "test_store")
-    s = KuzuGraphStore(db_path)
+    s = KuzuGraphStore(db_path, max_db_size=1 << 30)
     yield s
     s.close()
     shutil.rmtree(tmpdir, ignore_errors=True)
@@ -26,9 +26,9 @@ class TestKuzuGraphStore:
         """Calling _init_schema twice doesn't raise (covers except pass on line 38-39)."""
         tmpdir = tempfile.mkdtemp()
         db_path = os.path.join(tmpdir, "test_idem")
-        s1 = KuzuGraphStore(db_path)
+        s1 = KuzuGraphStore(db_path, max_db_size=1 << 30)
         # Second init on same DB — tables already exist, hits except pass
-        s2 = KuzuGraphStore(db_path)
+        s2 = KuzuGraphStore(db_path, max_db_size=1 << 30)
         s1.close()
         s2.close()
         shutil.rmtree(tmpdir, ignore_errors=True)

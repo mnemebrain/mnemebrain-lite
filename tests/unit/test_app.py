@@ -112,7 +112,7 @@ class TestLifespan:
         try:
             app = create_app(db_path=db_path)
             # Manually set up state as the lifespan would
-            memory = BeliefMemory(db_path=db_path)
+            memory = BeliefMemory(db_path=db_path, max_db_size=1 << 30)
             wm_manager = WorkingMemoryManager(memory)
             app.state.memory = memory
             app.state.wm_manager = wm_manager
@@ -189,7 +189,7 @@ class TestImportErrorExceptionHandler:
         db_path = os.path.join(tmpdir, "test_db")
         try:
             app = create_app(db_path=db_path)
-            memory = BeliefMemory(db_path=db_path)
+            memory = BeliefMemory(db_path=db_path, max_db_size=1 << 30)
             wm_manager = WorkingMemoryManager(memory)
             app.state.memory = memory
             app.state.wm_manager = wm_manager
