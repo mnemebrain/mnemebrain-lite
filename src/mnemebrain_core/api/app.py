@@ -36,6 +36,7 @@ def create_app(db_path: str = "./mnemebrain_data") -> FastAPI:
                 wm_manager.gc_frames()
 
         gc_task = asyncio.create_task(gc_loop())
+        app.state._gc_task = gc_task
         yield
         gc_task.cancel()
         memory.close()

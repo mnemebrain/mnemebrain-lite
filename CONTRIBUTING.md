@@ -39,6 +39,13 @@ uv run ruff format --check src/ tests/
 uv run ruff check --fix src/ tests/
 uv run ruff format src/ tests/
 
+# Test coverage
+uv run pytest tests/ --cov=src/mnemebrain_core --cov-report=term-missing
+
+# Coverage with HTML report
+uv run pytest tests/ --cov=src/mnemebrain_core --cov-report=html
+# open htmlcov/index.html
+
 # Type check (requires pyright install)
 uv run pip install pyright
 uv run pyright src/

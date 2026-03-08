@@ -95,3 +95,150 @@ class TestKuzuGraphStore:
     def test_get_evidence_nonexistent(self, store: KuzuGraphStore):
         """get_evidence() returns None for nonexistent evidence."""
         assert store.get_evidence(uuid4()) is None
+
+    # ------------------------------------------------------------------
+    # find_similar — shape mismatch skip (line 148-149)
+    # ------------------------------------------------------------------
+
+    def test_find_similar_shape_mismatch_skipped(self, store: KuzuGraphStore):
+        """Stored embedding with different dim than query is skipped (line 149)."""
+        belief = Belief(claim="3-dim belief")
+        store.upsert(belief, embedding=[0.1, 0.2, 0.3])  # 3-dim stored
+
+        # Query with 5-dim — shapes differ, the stored belief must be skipped
+        result = store.find_similar([0.1, 0.2, 0.3, 0.4, 0.5])
+        assert result == []
+
+    # ------------------------------------------------------------------
+    # list_beliefs_filtered (lines 183-198)
+    # ------------------------------------------------------------------
+
+    def _make_belief(
+        self,
+        claim: str,
+        truth_state=None,
+        belief_type=None,
+        tags=None,
+        confidence: float = 0.5,
+    ) -> Belief:
+        from mnemebrain_core.models import TruthState, BeliefType
+
+        kwargs: dict = {"claim": claim, "confidence": confidence}
+        if truth_state is not None:
+            kwargs["truth_state"] = truth_state
+        if belief_type is not None:
+            kwargs["belief_type"] = belief_type
+        if tags is not None:
+            kwargs["tags"] = tags
+        return Belief(**kwargs)
+
+    def test_list_beliefs_filtered_truth_state(self, store: KuzuGraphStore):
+        """Filter by truth_state returns only matching beliefs."""
+        from mnemebrain_core.models import TruthState
+
+        b_true = self._make_belief("true belief", truth_state=TruthState.TRUE)
+        b_false = self._make_belief("false belief", truth_state=TruthState.FALSE)
+        store.upsert(b_true)
+        store.upsert(b_false)
+
+        results, total = store.list_beliefs_filtered(
+            truth_states=[TruthState.TRUE]
+        )
+        assert total == 1
+        assert results[0].claim == "true belief"
+
+    def test_list_beliefs_filtered_belief_type(self, store: KuzuGraphStore):
+        """Filter by belief_type returns only matching beliefs."""
+        from mnemebrain_core.models import BeliefType
+
+        b_fact = self._make_belief("fact belief", belief_type=BeliefType.FACT)
+        b_pred = self._make_belief("pred belief", belief_type=BeliefType.PREDICTION)
+        store.upsert(b_fact)
+        store.upsert(b_pred)
+
+        results, total = store.list_beliefs_filtered(
+            belief_types=[BeliefType.PREDICTION]
+        )
+        assert total == 1
+        assert results[0].claim == "pred belief"
+
+    def test_list_beliefs_filtered_tag(self, store: KuzuGraphStore):
+        """Filter by tag returns only beliefs containing that tag."""
+        b_tagged = self._make_belief("tagged", tags=["science", "health"])
+        b_other = self._make_belief("untagged", tags=["sports"])
+        store.upsert(b_tagged)
+        store.upsert(b_other)
+
+        results, total = store.list_beliefs_filtered(tag="science")
+        assert total == 1
+        assert results[0].claim == "tagged"
+
+    def test_list_beliefs_filtered_confidence_range(self, store: KuzuGraphStore):
+        """Filter by confidence range excludes out-of-range beliefs."""
+        b_low = self._make_belief("low conf", confidence=0.2)
+        b_high = self._make_belief("high conf", confidence=0.9)
+        store.upsert(b_low)
+        store.upsert(b_high)
+
+        results, total = store.list_beliefs_filtered(
+            min_confidence=0.5, max_confidence=1.0
+        )
+        assert total == 1
+        assert results[0].claim == "high conf"
+
+    def test_list_beliefs_filtered_limit_and_offset(self, store: KuzuGraphStore):
+        """limit and offset slice the result set."""
+        for i in range(5):
+            store.upsert(self._make_belief(f"belief {i}", confidence=float(i) / 10))
+
+        results, total = store.list_beliefs_filtered(limit=2, offset=1)
+        assert total == 5
+        assert len(results) == 2
+
+    def test_list_beliefs_filtered_no_filters(self, store: KuzuGraphStore):
+        """No filters returns all beliefs sorted by confidence descending."""
+        b1 = self._make_belief("low", confidence=0.3)
+        b2 = self._make_belief("high", confidence=0.8)
+        store.upsert(b1)
+        store.upsert(b2)
+
+        results, total = store.list_beliefs_filtered()
+        assert total == 2
+        # Sorted by confidence descending
+        assert results[0].confidence >= results[1].confidence
+
+    # ------------------------------------------------------------------
+    # update_evidence (line 207)
+    # ------------------------------------------------------------------
+
+    def test_update_evidence(self, store: KuzuGraphStore):
+        """update_evidence persists new data and get_evidence reflects it."""
+        ev = Evidence(
+            belief_id=None,
+            source_ref="src_1",
+            content="original content",
+            polarity=Polarity.SUPPORTS,
+            reliability=0.7,
+            weight=0.6,
+        )
+        belief = Belief(claim="belief with evidence", evidence=[ev])
+        store.upsert(belief)
+
+        # Mutate the evidence object and update
+        ev.content = "updated content"
+        ev.reliability = 0.95
+        store.update_evidence(ev)
+
+        retrieved_ev = store.get_evidence(ev.id)
+        assert retrieved_ev is not None
+        assert retrieved_ev.content == "updated content"
+        assert retrieved_ev.reliability == 0.95
+
+    # ------------------------------------------------------------------
+    # close (lines 210-213)
+    # ------------------------------------------------------------------
+
+    def test_close_is_callable(self, store: KuzuGraphStore):
+        """close() is a no-op but must be reachable for coverage."""
+        # Should not raise
+        store.close()

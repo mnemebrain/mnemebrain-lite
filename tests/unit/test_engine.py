@@ -6,12 +6,16 @@ from uuid import uuid4
 import pytest
 
 from mnemebrain_core.engine import (
+    apply_conflict_policy,
     compute_confidence,
     compute_truth_state,
     effective_weight,
+    rank_score,
 )
 from mnemebrain_core.models import (
+    Belief,
     BeliefType,
+    ConflictPolicy,
     Evidence,
     Polarity,
     TruthState,
@@ -144,3 +148,117 @@ class TestComputeConfidence:
         ]
         c = compute_confidence(evidence, BeliefType.INFERENCE)
         assert c == pytest.approx(0.5, abs=0.1)
+
+
+# ---------------------------------------------------------------------------
+# rank_score
+# ---------------------------------------------------------------------------
+
+
+class TestRankScore:
+    def test_default_alpha(self):
+        # alpha=0.7: score = 0.7*sim + 0.3*conf
+        score = rank_score(similarity=1.0, confidence=1.0)
+        assert score == pytest.approx(1.0)
+
+    def test_pure_similarity(self):
+        # confidence=0 → score = alpha * similarity
+        score = rank_score(similarity=0.8, confidence=0.0, alpha=0.7)
+        assert score == pytest.approx(0.7 * 0.8)
+
+    def test_pure_confidence(self):
+        # similarity=0 → score = (1-alpha) * confidence
+        score = rank_score(similarity=0.0, confidence=0.6, alpha=0.7)
+        assert score == pytest.approx(0.3 * 0.6)
+
+    def test_custom_alpha(self):
+        score = rank_score(similarity=0.4, confidence=0.6, alpha=0.5)
+        assert score == pytest.approx(0.5 * 0.4 + 0.5 * 0.6)
+
+    def test_alpha_zero_uses_only_confidence(self):
+        score = rank_score(similarity=0.9, confidence=0.3, alpha=0.0)
+        assert score == pytest.approx(0.3)
+
+    def test_alpha_one_uses_only_similarity(self):
+        score = rank_score(similarity=0.9, confidence=0.3, alpha=1.0)
+        assert score == pytest.approx(0.9)
+
+    def test_intermediate_values(self):
+        score = rank_score(similarity=0.6, confidence=0.8, alpha=0.7)
+        expected = 0.7 * 0.6 + 0.3 * 0.8
+        assert score == pytest.approx(expected)
+
+
+# ---------------------------------------------------------------------------
+# apply_conflict_policy
+# ---------------------------------------------------------------------------
+
+
+def _belief(truth_state: TruthState) -> Belief:
+    """Create a minimal Belief with the given TruthState."""
+    b = Belief(claim="test belief", truth_state=truth_state)
+    return b
+
+
+class TestApplyConflictPolicy:
+    def test_surface_returns_all(self):
+        beliefs = [
+            (_belief(TruthState.TRUE), 0.9),
+            (_belief(TruthState.BOTH), 0.7),
+            (_belief(TruthState.FALSE), 0.3),
+        ]
+        result = apply_conflict_policy(beliefs, ConflictPolicy.SURFACE)
+        assert result == beliefs
+
+    def test_surface_empty_input(self):
+        result = apply_conflict_policy([], ConflictPolicy.SURFACE)
+        assert result == []
+
+    def test_conservative_removes_both(self):
+        b_true = _belief(TruthState.TRUE)
+        b_both = _belief(TruthState.BOTH)
+        b_false = _belief(TruthState.FALSE)
+        beliefs = [(b_true, 0.9), (b_both, 0.7), (b_false, 0.3)]
+
+        result = apply_conflict_policy(beliefs, ConflictPolicy.CONSERVATIVE)
+
+        assert len(result) == 2
+        ids = [id(b) for b, _ in result]
+        assert id(b_true) in ids
+        assert id(b_false) in ids
+        assert id(b_both) not in ids
+
+    def test_conservative_all_both_returns_empty(self):
+        beliefs = [(_belief(TruthState.BOTH), 0.8), (_belief(TruthState.BOTH), 0.6)]
+        result = apply_conflict_policy(beliefs, ConflictPolicy.CONSERVATIVE)
+        assert result == []
+
+    def test_conservative_no_both_returns_all(self):
+        beliefs = [
+            (_belief(TruthState.TRUE), 0.9),
+            (_belief(TruthState.NEITHER), 0.5),
+        ]
+        result = apply_conflict_policy(beliefs, ConflictPolicy.CONSERVATIVE)
+        assert len(result) == 2
+
+    def test_optimistic_falls_through_to_return_all(self):
+        """OPTIMISTIC has no special handling; falls through to default 'return beliefs'."""
+        beliefs = [
+            (_belief(TruthState.TRUE), 0.9),
+            (_belief(TruthState.BOTH), 0.7),
+        ]
+        result = apply_conflict_policy(beliefs, ConflictPolicy.OPTIMISTIC)
+        assert result == beliefs
+
+    def test_optimistic_empty_input(self):
+        result = apply_conflict_policy([], ConflictPolicy.OPTIMISTIC)
+        assert result == []
+
+    def test_scores_preserved(self):
+        """Scores in the tuples must survive unchanged through all policies."""
+        b = _belief(TruthState.TRUE)
+        beliefs = [(b, 0.123456)]
+        for policy in ConflictPolicy:
+            result = apply_conflict_policy(beliefs, policy)
+            if result:
+                assert result[0][1] == pytest.approx(0.123456)

@@ -397,3 +397,35 @@ class TestRelationIndexEdgeCases:
         a, b = _uid(), _uid()
         idx._by_source[a].append(_uid())  # dangling
         assert idx.find_between(a, b) == []
+
+    def test_find_between_with_dangling_id_in_reverse_direction(self):
+        """Dangling ID in _by_source[triple_b] (reverse lookup) returns empty."""
+        idx = RelationIndex()
+        a, b = _uid(), _uid()
+        idx._by_source[b].append(_uid())  # dangling in reverse direction
+        assert idx.find_between(a, b) == []
+
+    def test_find_between_excludes_inactive_in_reverse_direction(self):
+        """Inactive relation from B→A is excluded by find_between with active_only=True."""
+        idx = RelationIndex()
+        a, b = _uid(), _uid()
+        rel = _rel(source=b, target=a, active=False)
+        idx.add(rel)
+        assert idx.find_between(a, b, active_only=True) == []
+
+
+class TestDeactivateByTripleSeenDedup:
+    def test_deactivate_deduplicates_when_rel_in_both_indices(self):
+        """If a relation ID appears in both _by_source and _by_target for the same
+        triple_id, it should only be deactivated once (the `seen` set prevents double counting)."""
+        idx = RelationIndex()
+        t = _uid()
+        # Create a normal relation where t is the source
+        rel = _rel(source=t)
+        idx.add(rel)
+        # Manually also register this relation's ID under _by_target[t]
+        # to simulate the edge case where the same rel_id appears in both indices
+        idx._by_target[t].append(rel.id)
+        count = idx.deactivate_by_triple(t)
+        assert count == 1
+        assert not rel.active
