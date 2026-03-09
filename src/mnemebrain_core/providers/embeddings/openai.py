@@ -11,7 +11,7 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
     """Embedding provider using OpenAI's API."""
 
     def __init__(self, model: str = "text-embedding-3-small") -> None:
-        import openai  # noqa: PLC0415
+        import openai
 
         self._client = openai.OpenAI()
         self._model = model

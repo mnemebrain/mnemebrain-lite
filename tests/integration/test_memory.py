@@ -10,12 +10,9 @@ from mnemebrain_core.memory import BeliefMemory
 from mnemebrain_core.models import BeliefType, TruthState
 from mnemebrain_core.providers.base import EvidenceInput
 
-try:
-    import sentence_transformers  # noqa: F401
+import importlib.util
 
-    HAS_EMBEDDINGS = True
-except ImportError:
-    HAS_EMBEDDINGS = False
+HAS_EMBEDDINGS = importlib.util.find_spec("sentence_transformers") is not None
 
 pytestmark = [
     pytest.mark.integration,

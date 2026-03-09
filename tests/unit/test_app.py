@@ -47,7 +47,7 @@ class TestCreateApp:
         db_path = os.path.join(tmpdir, "test_db")
         try:
             app = create_app(db_path=db_path)
-            routes = [r.path for r in app.routes]  # type: ignore[attr-defined]
+            routes = [r.path for r in app.router.routes]
             assert "/health" in routes
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
@@ -83,7 +83,7 @@ class TestLifespan:
     async def test_lifespan_via_asgi_lifespan(self):
         """Lifespan startup wires memory + wm_manager onto app.state."""
         try:
-            from asgi_lifespan import LifespanManager  # type: ignore[import]
+            from asgi_lifespan import LifespanManager  # type: ignore[import-untyped]
         except ImportError:
             pytest.skip("asgi-lifespan not installed")
 

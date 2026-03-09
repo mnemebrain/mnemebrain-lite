@@ -22,7 +22,7 @@ class FrameStatus(str, Enum):
 
 
 @dataclass
-class BeliefSnapshot:  # pylint: disable=too-many-instance-attributes
+class BeliefSnapshot:
     """Point-in-time snapshot of a belief loaded into working memory."""
 
     belief_id: UUID
@@ -57,7 +57,7 @@ class FrameCommitResult:
 
 
 @dataclass
-class WorkingMemoryFrame:  # pylint: disable=too-many-instance-attributes
+class WorkingMemoryFrame:
     id: UUID = field(default_factory=uuid4)
     active_query: UUID = field(default_factory=uuid4)
     active_goal: UUID | None = None

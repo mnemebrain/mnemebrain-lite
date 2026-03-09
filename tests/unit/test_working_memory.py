@@ -28,12 +28,9 @@ from mnemebrain_core.working_memory import (
 # Embedding availability guard
 # ---------------------------------------------------------------------------
 
-try:
-    import sentence_transformers  # noqa: F401
+import importlib.util
 
-    HAS_EMBEDDINGS = True
-except ImportError:
-    HAS_EMBEDDINGS = False
+HAS_EMBEDDINGS = importlib.util.find_spec("sentence_transformers") is not None
 
 requires_embeddings = pytest.mark.skipif(
     not HAS_EMBEDDINGS, reason="sentence-transformers not installed"
@@ -48,10 +45,10 @@ requires_embeddings = pytest.mark.skipif(
 class _FixedEmbedder:
     """Returns a fixed 3-d unit vector and similarity=1.0 for all inputs."""
 
-    def embed(self, text: str) -> list[float]:  # noqa: ARG002
+    def embed(self, text: str) -> list[float]:
         return [1.0, 0.0, 0.0]
 
-    def similarity(self, a: list[float], b: list[float]) -> float:  # noqa: ARG002
+    def similarity(self, a: list[float], b: list[float]) -> float:
         return 1.0
 
 

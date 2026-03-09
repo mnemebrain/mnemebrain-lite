@@ -17,7 +17,7 @@ from mnemebrain_core.working_memory import WorkingMemoryManager
 def create_app(db_path: str = "./mnemebrain_data") -> FastAPI:
     """Create FastAPI app with BeliefMemory."""
     try:
-        from dotenv import find_dotenv, load_dotenv  # noqa: PLC0415
+        from dotenv import find_dotenv, load_dotenv
 
         load_dotenv(find_dotenv(usecwd=True))
     except ImportError:

@@ -24,23 +24,19 @@ class KuzuGraphStore:
 
     def _init_schema(self) -> None:
         """Create node/rel tables if they don't exist."""
-        try:
-            self._conn.execute(
-                "CREATE NODE TABLE IF NOT EXISTS Belief("
-                "id STRING, data STRING, embedding DOUBLE[], "
-                "PRIMARY KEY(id))"
-            )
-            self._conn.execute(
-                "CREATE NODE TABLE IF NOT EXISTS EvidenceNode("
-                "id STRING, belief_id STRING, data STRING, "
-                "PRIMARY KEY(id))"
-            )
-            self._conn.execute(
-                "CREATE REL TABLE IF NOT EXISTS HAS_EVIDENCE("
-                "FROM Belief TO EvidenceNode)"
-            )
-        except RuntimeError:  # pragma: no cover
-            pass  # Tables already exist
+        self._conn.execute(
+            "CREATE NODE TABLE IF NOT EXISTS Belief("
+            "id STRING, data STRING, embedding DOUBLE[], "
+            "PRIMARY KEY(id))"
+        )
+        self._conn.execute(
+            "CREATE NODE TABLE IF NOT EXISTS EvidenceNode("
+            "id STRING, belief_id STRING, data STRING, "
+            "PRIMARY KEY(id))"
+        )
+        self._conn.execute(
+            "CREATE REL TABLE IF NOT EXISTS HAS_EVIDENCE(FROM Belief TO EvidenceNode)"
+        )
 
     def upsert(self, belief: Belief, embedding: list[float] | None = None) -> None:
         """Insert or update a belief and its evidence."""
@@ -64,15 +60,12 @@ class KuzuGraphStore:
                 "SET e.belief_id = $belief_id, e.data = $data",
                 parameters={"id": ev_id, "belief_id": bid, "data": ev_json},
             )
-            # Create relationship
-            try:
-                self._conn.execute(
-                    "MATCH (b:Belief {id: $bid}), (e:EvidenceNode {id: $eid}) "
-                    "MERGE (b)-[:HAS_EVIDENCE]->(e)",
-                    parameters={"bid": bid, "eid": ev_id},
-                )
-            except RuntimeError:  # pragma: no cover
-                pass  # Relationship already exists
+            # Create relationship (MERGE is idempotent)
+            self._conn.execute(
+                "MATCH (b:Belief {id: $bid}), (e:EvidenceNode {id: $eid}) "
+                "MERGE (b)-[:HAS_EVIDENCE]->(e)",
+                parameters={"bid": bid, "eid": ev_id},
+            )
 
     def get(self, belief_id: UUID) -> Belief | None:
         """Retrieve a belief by ID."""

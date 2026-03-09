@@ -9,12 +9,9 @@ from httpx import ASGITransport, AsyncClient
 
 from mnemebrain_core.api.app import create_app
 
-try:
-    import sentence_transformers  # noqa: F401
+import importlib.util
 
-    HAS_EMBEDDINGS = True
-except ImportError:
-    HAS_EMBEDDINGS = False
+HAS_EMBEDDINGS = importlib.util.find_spec("sentence_transformers") is not None
 
 pytestmark = [
     pytest.mark.e2e,
