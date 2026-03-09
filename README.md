@@ -12,12 +12,25 @@ Evidence is tracked with **SUPPORTS / ATTACKS polarity** and scored using **log-
 
 Most agent memory systems cannot represent contradictions; MnemeBrain Lite treats contradiction as a first-class state.
 
+MnemeBrain is to agent beliefs what a database is to application state.
+
 > ⭐ **Building AI agents?** Run the [BMB benchmark](https://github.com/mnemebrain/mnemebrain-benchmark) on your memory stack.
 > ```bash
 > pip install mnemebrain-benchmark
 > bmb run
 > ```
 > No API keys. No LLM calls. See how your system handles contradictions, belief revision, and temporal decay — in 60 seconds.
+
+## Core Primitives
+
+| Primitive | Class | Description |
+|-----------|-------|-------------|
+| **Belief** | `Belief` | A claim the agent currently holds, with truth state and confidence. |
+| **Evidence** | `Evidence` | A piece of supporting or attacking evidence linked to a belief. |
+| **Truth State** | `TruthState` | Belnap four-valued logic: `TRUE`, `FALSE`, `BOTH`, `NEITHER`. |
+| **Polarity** | `Polarity` | Evidence relation: `SUPPORTS` or `ATTACKS`. |
+| **Confidence** | `engine.py` | Log-odds fusion of evidence weights, mapped to [0, 1] via sigmoid. |
+| **Revision** | `BeliefMemory.revise()` | Add new evidence and recompute truth state (AGM-style minimal change). |
 
 ## Project Structure
 
