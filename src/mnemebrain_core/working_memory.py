@@ -191,45 +191,56 @@ class WorkingMemoryManager:
         beliefs_created = 0
         beliefs_revised = 0
 
+        def _get(obj: Any, key: str, default: Any = None) -> Any:
+            """Attribute access for objects, key access for dicts."""
+            if isinstance(obj, dict):
+                return obj.get(key, default)
+            return getattr(obj, key, default)
+
         if new_beliefs:
             for payload in new_beliefs:
+                raw_evidence = _get(payload, "evidence", [])
                 evidence_items = [
                     EvidenceInput(
-                        source_ref=e.source_ref,
-                        content=e.content,
-                        polarity=e.polarity.value
-                        if hasattr(e.polarity, "value")
-                        else e.polarity,
-                        weight=e.weight,
-                        reliability=e.reliability,
-                        scope=e.scope,
+                        source_ref=_get(e, "source_ref", ""),
+                        content=_get(e, "content", ""),
+                        polarity=_get(e, "polarity", "supports")
+                        if not hasattr(_get(e, "polarity", "supports"), "value")
+                        else _get(e, "polarity").value,
+                        weight=_get(e, "weight", 0.8),
+                        reliability=_get(e, "reliability", 0.7),
+                        scope=_get(e, "scope", None),
                     )
-                    for e in payload.evidence
+                    for e in raw_evidence
                 ]
+                raw_bt = _get(payload, "belief_type", "inference")
                 self._memory.believe(
-                    claim=payload.claim,
+                    claim=_get(payload, "claim"),
                     evidence_items=evidence_items,
-                    belief_type=payload.belief_type
-                    if hasattr(payload.belief_type, "value")
-                    else BeliefType(payload.belief_type),
-                    tags=payload.tags,
+                    belief_type=raw_bt
+                    if hasattr(raw_bt, "value")
+                    else BeliefType(raw_bt),
+                    tags=_get(payload, "tags", []),
                     source_agent=frame.source_agent,
                 )
                 beliefs_created += 1
 
         if revisions:
             for rev in revisions:
+                raw_ev = _get(rev, "evidence", {})
+                raw_pol = _get(raw_ev, "polarity", "supports")
                 ev = EvidenceInput(
-                    source_ref=rev.evidence.source_ref,
-                    content=rev.evidence.content,
-                    polarity=rev.evidence.polarity.value
-                    if hasattr(rev.evidence.polarity, "value")
-                    else rev.evidence.polarity,
-                    weight=rev.evidence.weight,
-                    reliability=rev.evidence.reliability,
-                    scope=rev.evidence.scope,
+                    source_ref=_get(raw_ev, "source_ref", ""),
+                    content=_get(raw_ev, "content", ""),
+                    polarity=raw_pol.value if hasattr(raw_pol, "value") else raw_pol,
+                    weight=_get(raw_ev, "weight", 0.8),
+                    reliability=_get(raw_ev, "reliability", 0.7),
+                    scope=_get(raw_ev, "scope", None),
                 )
-                self._memory.revise(rev.belief_id, ev)
+                bid = _get(rev, "belief_id")
+                if isinstance(bid, str):
+                    bid = UUID(bid)
+                self._memory.revise(bid, ev)
                 beliefs_revised += 1
 
         frame.status = FrameStatus.COMMITTED

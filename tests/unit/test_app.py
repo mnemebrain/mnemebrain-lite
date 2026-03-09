@@ -83,7 +83,7 @@ class TestLifespan:
     async def test_lifespan_via_asgi_lifespan(self):
         """Lifespan startup wires memory + wm_manager onto app.state."""
         try:
-            from asgi_lifespan import LifespanManager  # type: ignore[import-untyped]
+            from asgi_lifespan import LifespanManager
         except ImportError:
             pytest.skip("asgi-lifespan not installed")
 

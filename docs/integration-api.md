@@ -621,15 +621,4 @@ Without any embedding provider, `believe` and `explain` return **501 Not Impleme
 
 ## Architecture
 
-```
-Client -> FastAPI -> BeliefMemory -> KuzuGraphStore (embedded graph DB)
-                         |
-                   Truth Engine (pure functions)
-                         |
-                   EmbeddingProvider (optional)
-```
-
-- **Append-only evidence ledger** — evidence is never deleted, only invalidated
-- **Kuzu embedded graph DB** — stores beliefs, evidence, and embeddings
-- **Stateless computation** — truth states and confidence recomputed from evidence on every mutation
-- **Graceful degradation** — retract and revise work without embeddings; believe and explain require them
+See [architecture.md](architecture.md) for the full architecture overview, source layout, and phase roadmap.

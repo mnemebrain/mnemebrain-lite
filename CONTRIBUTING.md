@@ -19,6 +19,17 @@ cd mnemebrain-lite
 # Install dependencies (including dev extras)
 uv sync --extra dev
 
+# Install embedding providers (at least one required for /believe endpoint)
+
+# Option A: Local embeddings (no API key needed)
+uv pip install -e ".[embeddings]"
+
+# Option B: OpenAI embeddings (requires OPENAI_API_KEY)
+uv pip install -e ".[openai]"
+
+# Option C: Everything
+uv pip install -e ".[all]"
+
 # Run all tests
 uv run pytest tests/ -v
 
