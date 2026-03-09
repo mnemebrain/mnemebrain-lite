@@ -5,7 +5,12 @@
 [![codecov](https://codecov.io/gh/mnemebrain/mnemebrain-lite/graph/badge.svg)](https://codecov.io/gh/mnemebrain/mnemebrain-lite)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**The belief layer for AI agents.**
+**MnemeBrain Lite is the open-source belief-state engine for AI agents.**
+Instead of storing text memories, it maintains a **belief graph** with evidence, provenance, and confidence.
+Beliefs use **Belnap four-valued truth states** (TRUE / FALSE / BOTH / NEITHER) and update via **evidence-driven revision**.
+Evidence is tracked with **SUPPORTS / ATTACKS polarity** and scored using **log-odds confidence**.
+
+Most agent memory systems cannot represent contradictions; MnemeBrain Lite treats contradiction as a first-class state.
 
 > ⭐ **Building AI agents?** Run the [BMB benchmark](https://github.com/mnemebrain/mnemebrain-benchmark) on your memory stack.
 > ```bash
@@ -13,8 +18,6 @@
 > bmb run
 > ```
 > No API keys. No LLM calls. See how your system handles contradictions, belief revision, and temporal decay — in 60 seconds.
-
----
 
 ## Project Structure
 
