@@ -95,9 +95,9 @@ class TestLifespan:
         db_path = os.path.join(tmpdir, "test_db")
         try:
             app = create_app(db_path=db_path)
-            async with LifespanManager(app) as manager:
-                assert isinstance(manager.app.state.memory, BeliefMemory)
-                assert isinstance(manager.app.state.wm_manager, WorkingMemoryManager)
+            async with LifespanManager(app):
+                assert isinstance(app.state.memory, BeliefMemory)
+                assert isinstance(app.state.wm_manager, WorkingMemoryManager)
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
 
