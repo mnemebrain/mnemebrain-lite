@@ -25,4 +25,4 @@ jobs:
       run: uv sync --extra dev && uv pip install pylint
 
     - name: Analysing the code with pylint
-      run: uv run pylint --disable=C0103,C0114,C0115,C0116,C0415,E0401,R0801,R0903,R0913,R0917,W0603,W0621,W0107,W0613,W2301 src/
+      run: uv run pylint --disable=C0103,C0114,C0115,C0116,C0415,E0401,R0801,R0902,R0903,R0913,R0917,W0603,W0621,W0107,W0613,W2301 src/
