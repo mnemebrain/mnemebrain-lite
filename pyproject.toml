@@ -65,3 +65,8 @@ markers = [
     "integration: marks tests requiring Kuzu DB and embeddings",
     "e2e: marks end-to-end API tests",
 ]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+]

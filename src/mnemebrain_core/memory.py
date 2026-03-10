@@ -115,11 +115,12 @@ class BeliefMemory:
         source_agent: str = "",
     ) -> BeliefResult:
         """Store a new belief with evidence. Merges if similar belief exists."""
+        embedding: list[float]
         if self._embedder is not None:
             embedding = self._embedder.embed(claim)
             existing = self._store.find_similar(embedding, threshold=0.92)
         else:
-            embedding: list[float] = []
+            embedding = []
             exact = self._store.find_by_claim(claim)
             existing = [(exact, 1.0)] if exact else []
 
