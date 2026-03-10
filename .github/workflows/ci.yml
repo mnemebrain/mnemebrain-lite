@@ -60,3 +60,6 @@ jobs:
 
       - name: Run ruff format check
         run: uv run ruff format --check src/ tests/
+
+      - name: Run mypy type check
+        run: uv run mypy src/mnemebrain_core/ --ignore-missing-imports

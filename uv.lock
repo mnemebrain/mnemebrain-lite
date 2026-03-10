@@ -444,6 +444,7 @@ dev = [
     { name = "asgi-lifespan", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
     { name = "fastapi", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
     { name = "httpx", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
+    { name = "mypy", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
     { name = "pytest", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
     { name = "pytest-asyncio", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
     { name = "pytest-cov", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
@@ -457,11 +458,6 @@ openai = [
     { name = "openai", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "mypy", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux')" },
-]
-
 [package.metadata]
 requires-dist = [
     { name = "asgi-lifespan", marker = "extra == 'dev'", specifier = ">=2.0" },
@@ -473,6 +469,7 @@ requires-dist = [
     { name = "mnemebrain-lite", extras = ["api"], marker = "extra == 'dev'" },
     { name = "mnemebrain-lite", extras = ["embeddings"], marker = "extra == 'all'" },
     { name = "mnemebrain-lite", extras = ["openai"], marker = "extra == 'all'" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.19" },
     { name = "numpy", specifier = ">=1.26,<2.0" },
     { name = "openai", marker = "extra == 'openai'", specifier = ">=1.0" },
     { name = "pydantic", specifier = ">=2.0" },
@@ -484,9 +481,6 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'api'", specifier = ">=0.34" },
 ]
 provides-extras = ["api", "embeddings", "openai", "all", "dev"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "mypy", specifier = ">=1.19.1" }]
 
 [[package]]
 name = "mpmath"
