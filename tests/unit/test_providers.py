@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from types import ModuleType
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -152,3 +152,79 @@ class TestOpenAIEmbeddingProvider:
 
         provider = OpenAIEmbeddingProvider()
         assert provider._model == "text-embedding-3-small"
+
+
+# --- OpenAI-compatible provider tests (mocked, no server needed) ---
+
+
+class TestOpenAICompatibleProvider:
+    def _make_provider(self, api_key=None):
+        from mnemebrain_core.providers.embeddings.openai_compatible import (
+            OpenAICompatibleProvider,
+        )
+
+        return OpenAICompatibleProvider(
+            base_url="http://localhost:11434/v1",
+            model="nomic-embed-text",
+            api_key=api_key,
+        )
+
+    def test_embed_returns_vector(self):
+        """embed() returns the vector from a mocked response."""
+        provider = self._make_provider()
+        expected = [0.1, 0.2, 0.3, 0.4]
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": [{"embedding": expected}]}
+        with patch.object(provider._client, "post", return_value=mock_response):
+            result = provider.embed("hello")
+        assert result == expected
+
+    def test_embed_sends_correct_payload(self):
+        """embed() sends the right JSON body."""
+        provider = self._make_provider()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": [{"embedding": [0.1]}]}
+        with patch.object(
+            provider._client, "post", return_value=mock_response
+        ) as mock_post:
+            provider.embed("test text")
+        mock_post.assert_called_once_with(
+            "/embeddings",
+            json={"input": "test text", "model": "nomic-embed-text"},
+        )
+
+    def test_embed_with_api_key(self):
+        """When api_key is set, Authorization header is included."""
+        provider = self._make_provider(api_key="sk-test-key")
+        assert provider._client.headers["authorization"] == "Bearer sk-test-key"
+
+    def test_embed_without_api_key(self):
+        """When no api_key, no Authorization header."""
+        provider = self._make_provider()
+        assert "authorization" not in provider._client.headers
+
+    def test_embed_error_response(self):
+        """Non-200 response raises RuntimeError."""
+        provider = self._make_provider()
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        with patch.object(provider._client, "post", return_value=mock_response):
+            with pytest.raises(RuntimeError, match="Embedding request failed"):
+                provider.embed("hello")
+
+    def test_similarity_identical(self):
+        """similarity() on identical vectors returns 1.0."""
+        provider = self._make_provider()
+        vec = [0.6, 0.8]
+        assert provider.similarity(vec, vec) == pytest.approx(1.0, abs=0.001)
+
+    def test_similarity_zero_vector(self):
+        """similarity() with zero vector returns 0.0."""
+        provider = self._make_provider()
+        vec = [0.5, 0.5]
+        zero = [0.0, 0.0]
+        assert provider.similarity(vec, zero) == 0.0
+        assert provider.similarity(zero, vec) == 0.0

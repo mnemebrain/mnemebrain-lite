@@ -148,23 +148,145 @@ class TestAutoDetectEmbedder:
             result = BeliefMemory._auto_detect_embedder()
             assert result is None
 
+    def test_auto_detect_openai_compatible(self):
+        """When EMBEDDING_BASE_URL and EMBEDDING_MODEL are set, returns compatible provider."""
 
-# ---------------------------------------------------------------------------
-# _get_embedder
-# ---------------------------------------------------------------------------
+        def _fake_import(name, *args, **kwargs):
+            if "sentence_transformers" in name:
+                raise ImportError("no sentence-transformers")
+            return original_import(name, *args, **kwargs)
 
+        import builtins
 
-class TestGetEmbedder:
-    def test_raises_when_no_embedder(self):
-        tmpdir = tempfile.mkdtemp()
-        db_path = os.path.join(tmpdir, "test_no_emb")
-        try:
-            m = BeliefMemory(
-                db_path=db_path, embedding_provider=FakeEmbedder(), max_db_size=1 << 30
+        original_import = builtins.__import__
+
+        with (
+            patch("builtins.__import__", side_effect=_fake_import),
+            patch.dict(
+                "os.environ",
+                {
+                    "EMBEDDING_BASE_URL": "http://localhost:11434/v1",
+                    "EMBEDDING_MODEL": "nomic-embed-text",
+                },
+                clear=True,
+            ),
+        ):
+            result = BeliefMemory._auto_detect_embedder()
+            from mnemebrain_core.providers.embeddings.openai_compatible import (
+                OpenAICompatibleProvider,
             )
-            m._embedder = None  # Force no embedder
-            with pytest.raises(ImportError, match="No embedding provider"):
-                m._get_embedder()
+
+            assert isinstance(result, OpenAICompatibleProvider)
+
+    def test_auto_detect_skips_when_partial_env(self):
+        """When only EMBEDDING_BASE_URL is set (no model), skips compatible provider."""
+
+        def _fake_import(name, *args, **kwargs):
+            if "sentence_transformers" in name:
+                raise ImportError("no sentence-transformers")
+            return original_import(name, *args, **kwargs)
+
+        import builtins
+
+        original_import = builtins.__import__
+
+        with (
+            patch("builtins.__import__", side_effect=_fake_import),
+            patch.dict(
+                "os.environ",
+                {"EMBEDDING_BASE_URL": "http://localhost:11434/v1"},
+                clear=True,
+            ),
+        ):
+            result = BeliefMemory._auto_detect_embedder()
+            assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Degraded mode (no embedder)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def memory_no_embedder():
+    tmpdir = tempfile.mkdtemp()
+    db_path = os.path.join(tmpdir, "test_no_emb")
+    m = BeliefMemory(
+        db_path=db_path, embedding_provider=FakeEmbedder(), max_db_size=1 << 30
+    )
+    m._embedder = None  # Force degraded mode
+    yield m
+    m.close()
+    shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+class TestDegradedMode:
+    def test_believe_without_embedder(self, memory_no_embedder: BeliefMemory):
+        """believe() works without an embedder."""
+        result = memory_no_embedder.believe(
+            claim="test claim",
+            evidence_items=[
+                EvidenceInput(source_ref="s1", content="c1", polarity="supports")
+            ],
+        )
+        assert isinstance(result, BeliefResult)
+        assert result.confidence > 0
+
+    def test_believe_dedup_exact_match(self, memory_no_embedder: BeliefMemory):
+        """Same claim twice without embedder merges via exact match."""
+        r1 = memory_no_embedder.believe(
+            claim="duplicate claim",
+            evidence_items=[
+                EvidenceInput(source_ref="s1", content="c1", polarity="supports")
+            ],
+        )
+        r2 = memory_no_embedder.believe(
+            claim="duplicate claim",
+            evidence_items=[
+                EvidenceInput(source_ref="s2", content="c2", polarity="supports")
+            ],
+        )
+        assert r1.id == r2.id
+
+    def test_explain_without_embedder(self, memory_no_embedder: BeliefMemory):
+        """explain() falls back to exact match without embedder."""
+        memory_no_embedder.believe(
+            claim="explainable",
+            evidence_items=[
+                EvidenceInput(source_ref="s1", content="c1", polarity="supports")
+            ],
+        )
+        result = memory_no_embedder.explain("explainable")
+        assert result is not None
+        assert result.claim == "explainable"
+
+    def test_search_without_embedder(self, memory_no_embedder: BeliefMemory):
+        """search() uses substring match without embedder."""
+        memory_no_embedder.believe(
+            claim="searchable belief about cats",
+            evidence_items=[
+                EvidenceInput(source_ref="s1", content="c1", polarity="supports")
+            ],
+        )
+        results = memory_no_embedder.search("cats")
+        assert len(results) >= 1
+        assert "cats" in results[0][0].claim
+
+    def test_warning_logged(self):
+        """Degraded mode logs a warning at init."""
+        tmpdir = tempfile.mkdtemp()
+        db_path = os.path.join(tmpdir, "test_warn")
+        try:
+            import mnemebrain_core.memory as mem_mod
+
+            with (
+                patch.object(BeliefMemory, "_auto_detect_embedder", return_value=None),
+                patch.object(mem_mod.logger, "warning") as mock_warn,
+            ):
+                m = BeliefMemory(db_path=db_path, max_db_size=1 << 30)
+                mock_warn.assert_called_once()
+                assert "degraded mode" in mock_warn.call_args[0][0].lower()
+                m.close()
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
 

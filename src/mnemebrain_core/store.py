@@ -193,6 +193,28 @@ class KuzuGraphStore:
         total = len(filtered)
         return filtered[offset : offset + limit], total
 
+    def find_by_text(self, query: str, limit: int = 10) -> list[tuple[Belief, float]]:
+        """Find beliefs by case-insensitive substring match on claim text.
+
+        Returns (belief, score) pairs sorted by relevance score.
+        """
+        result = self._conn.execute("MATCH (b:Belief) RETURN b.id, b.data")
+        matches: list[tuple[Belief, float]] = []
+        query_lower = query.lower()
+
+        while result.has_next():
+            row = result.get_next()
+            data = json.loads(row[1])
+            claim = data.get("claim", "")
+            if query_lower in claim.lower():
+                score = len(query) / len(claim) if claim else 0.0
+                belief = self.get(UUID(row[0]))
+                if belief:
+                    matches.append((belief, score))
+
+        matches.sort(key=lambda x: x[1], reverse=True)
+        return matches[:limit]
+
     def find_by_claim(self, claim: str) -> Belief | None:
         """Find a belief by exact claim match."""
         result = self._conn.execute("MATCH (b:Belief) RETURN b.id, b.data")
