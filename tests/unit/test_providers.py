@@ -56,6 +56,77 @@ class TestSentenceTransformerProvider:
         assert sim == pytest.approx(0.0, abs=0.01)
 
 
+# --- SentenceTransformer provider tests (mocked, no package needed) ---
+
+
+class TestSentenceTransformerProviderMocked:
+    """Tests that exercise the provider code with a mocked SentenceTransformer."""
+
+    @pytest.fixture(autouse=True)
+    def _mock_sentence_transformers(self):
+        import numpy as np
+
+        fake_st_mod = ModuleType("sentence_transformers")
+        mock_model = MagicMock()
+        mock_model.encode.return_value = np.array([0.6, 0.8, 0.0])
+
+        fake_st_mod.SentenceTransformer = MagicMock(return_value=mock_model)
+        sys.modules["sentence_transformers"] = fake_st_mod
+
+        mod_name = "mnemebrain_core.providers.embeddings.sentence_transformers"
+        if mod_name in sys.modules:
+            del sys.modules[mod_name]
+
+        yield
+
+        del sys.modules["sentence_transformers"]
+        if mod_name in sys.modules:
+            del sys.modules[mod_name]
+
+    def _make_provider(self):
+        from mnemebrain_core.providers.embeddings.sentence_transformers import (
+            SentenceTransformerProvider,
+        )
+
+        return SentenceTransformerProvider()
+
+    def test_embed_returns_list_of_floats(self):
+        provider = self._make_provider()
+        result = provider.embed("hello")
+        assert isinstance(result, list)
+        assert all(isinstance(v, float) for v in result)
+        assert result == [pytest.approx(0.6), pytest.approx(0.8), pytest.approx(0.0)]
+
+    def test_similarity_dot_product(self):
+        provider = self._make_provider()
+        a = [1.0, 0.0, 0.0]
+        b = [0.0, 1.0, 0.0]
+        assert provider.similarity(a, b) == pytest.approx(0.0, abs=0.001)
+
+    def test_similarity_identical(self):
+        provider = self._make_provider()
+        vec = [0.6, 0.8]
+        assert provider.similarity(vec, vec) == pytest.approx(1.0, abs=0.001)
+
+    def test_default_model_name(self):
+        from mnemebrain_core.providers.embeddings.sentence_transformers import (
+            SentenceTransformerProvider,
+        )
+        import sentence_transformers
+
+        SentenceTransformerProvider()
+        sentence_transformers.SentenceTransformer.assert_called_with("all-MiniLM-L6-v2")
+
+    def test_custom_model_name(self):
+        from mnemebrain_core.providers.embeddings.sentence_transformers import (
+            SentenceTransformerProvider,
+        )
+        import sentence_transformers
+
+        SentenceTransformerProvider("custom-model")
+        sentence_transformers.SentenceTransformer.assert_called_with("custom-model")
+
+
 # --- OpenAI provider tests (mocked, no API key needed) ---
 
 
