@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0a6] - 2026-03-13
+
+### Added
+
+- OpenAI-compatible embedding provider (`openai_compatible.py`) — supports any `/v1/embeddings` endpoint (Ollama, LM Studio, vLLM, etc.) via `EMBEDDING_BASE_URL` + `EMBEDDING_MODEL` env vars
+- Graceful degradation mode — when no embedding provider is available, believe/explain/search fall back to text matching instead of returning 501
+- `httpx` added as a core dependency for the OpenAI-compatible provider
+- mypy type checking step in CI workflow
+
+### Changed
+
+- Refactored `working_memory.py` — extracted `_build_evidence_input`, `_apply_new_beliefs`, `_apply_revisions` helpers from `commit_frame` to reduce complexity (pylint R0914)
+- Auto-detect embedder chain now tries: sentence-transformers → OpenAI-compatible → OpenAI API
+
+### Fixed
+
+- 100% test coverage restored — all mypy type errors resolved
+- `mypy` added to dev dependencies
+
 ## [0.1.0a5] - 2026-03-09
 
 ### Fixed
