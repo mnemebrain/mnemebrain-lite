@@ -202,7 +202,7 @@ class WorkingMemoryManager:
                 evidence_items=evidence_items,
                 belief_type=raw_bt if hasattr(raw_bt, "value") else BeliefType(raw_bt),
                 tags=self._get(payload, "tags", []),
-                source_agent=source_agent,
+                source_agent=source_agent or "",
             )
             count += 1
         return count
