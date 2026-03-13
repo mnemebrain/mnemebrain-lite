@@ -190,9 +190,7 @@ class WorkingMemoryManager:
             scope=self._get(raw, "scope", None),
         )
 
-    def _apply_new_beliefs(
-        self, payloads: list[Any], source_agent: str | None
-    ) -> int:
+    def _apply_new_beliefs(self, payloads: list[Any], source_agent: str | None) -> int:
         """Process new belief payloads and return count created."""
         count = 0
         for payload in payloads:
@@ -202,9 +200,7 @@ class WorkingMemoryManager:
             self._memory.believe(
                 claim=self._get(payload, "claim"),
                 evidence_items=evidence_items,
-                belief_type=raw_bt
-                if hasattr(raw_bt, "value")
-                else BeliefType(raw_bt),
+                belief_type=raw_bt if hasattr(raw_bt, "value") else BeliefType(raw_bt),
                 tags=self._get(payload, "tags", []),
                 source_agent=source_agent,
             )
@@ -241,9 +237,7 @@ class WorkingMemoryManager:
         if frame.status != FrameStatus.ACTIVE:
             raise ValueError(f"Frame {frame_id} is {frame.status.value}, not active")
 
-        beliefs_created = self._apply_new_beliefs(
-            new_beliefs or [], frame.source_agent
-        )
+        beliefs_created = self._apply_new_beliefs(new_beliefs or [], frame.source_agent)
         beliefs_revised = self._apply_revisions(revisions or [])
 
         frame.status = FrameStatus.COMMITTED
