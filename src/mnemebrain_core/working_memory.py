@@ -169,6 +169,57 @@ class WorkingMemoryManager:
         frame.scratchpad[key] = value
         frame.step_count += 1
 
+    @staticmethod
+    def _get(obj: Any, key: str, default: Any = None) -> Any:
+        """Attribute access for objects, key access for dicts."""
+        if isinstance(obj, dict):
+            return obj.get(key, default)
+        return getattr(obj, key, default)
+
+    def _build_evidence_input(self, raw: Any) -> Any:
+        """Build an EvidenceInput from a raw dict or schema object."""
+        from mnemebrain_core.providers.base import EvidenceInput
+
+        raw_pol = self._get(raw, "polarity", "supports")
+        return EvidenceInput(
+            source_ref=self._get(raw, "source_ref", ""),
+            content=self._get(raw, "content", ""),
+            polarity=raw_pol.value if hasattr(raw_pol, "value") else raw_pol,
+            weight=self._get(raw, "weight", 0.8),
+            reliability=self._get(raw, "reliability", 0.7),
+            scope=self._get(raw, "scope", None),
+        )
+
+    def _apply_new_beliefs(self, payloads: list[Any], source_agent: str | None) -> int:
+        """Process new belief payloads and return count created."""
+        count = 0
+        for payload in payloads:
+            raw_evidence = self._get(payload, "evidence", [])
+            evidence_items = [self._build_evidence_input(e) for e in raw_evidence]
+            raw_bt = self._get(payload, "belief_type", "inference")
+            self._memory.believe(
+                claim=self._get(payload, "claim"),
+                evidence_items=evidence_items,
+                belief_type=raw_bt if hasattr(raw_bt, "value") else BeliefType(raw_bt),
+                tags=self._get(payload, "tags", []),
+                source_agent=source_agent or "",
+            )
+            count += 1
+        return count
+
+    def _apply_revisions(self, revisions: list[Any]) -> int:
+        """Process revision payloads and return count revised."""
+        count = 0
+        for rev in revisions:
+            raw_ev = self._get(rev, "evidence", {})
+            ev = self._build_evidence_input(raw_ev)
+            bid = self._get(rev, "belief_id")
+            if isinstance(bid, str):
+                bid = UUID(bid)
+            self._memory.revise(bid, ev)
+            count += 1
+        return count
+
     def commit_frame(
         self,
         frame_id: UUID,
@@ -180,68 +231,14 @@ class WorkingMemoryManager:
         Accepts typed NewBeliefPayload/RevisionPayload objects from the API
         schemas, or raw dicts for backwards compatibility.
         """
-        from mnemebrain_core.providers.base import EvidenceInput
-
         frame = self._frames.get(frame_id)
         if frame is None:
             raise ValueError(f"Frame {frame_id} not found")
         if frame.status != FrameStatus.ACTIVE:
             raise ValueError(f"Frame {frame_id} is {frame.status.value}, not active")
 
-        beliefs_created = 0
-        beliefs_revised = 0
-
-        def _get(obj: Any, key: str, default: Any = None) -> Any:
-            """Attribute access for objects, key access for dicts."""
-            if isinstance(obj, dict):
-                return obj.get(key, default)
-            return getattr(obj, key, default)
-
-        if new_beliefs:
-            for payload in new_beliefs:
-                raw_evidence = _get(payload, "evidence", [])
-                evidence_items = [
-                    EvidenceInput(
-                        source_ref=_get(e, "source_ref", ""),
-                        content=_get(e, "content", ""),
-                        polarity=_get(e, "polarity", "supports")
-                        if not hasattr(_get(e, "polarity", "supports"), "value")
-                        else _get(e, "polarity").value,
-                        weight=_get(e, "weight", 0.8),
-                        reliability=_get(e, "reliability", 0.7),
-                        scope=_get(e, "scope", None),
-                    )
-                    for e in raw_evidence
-                ]
-                raw_bt = _get(payload, "belief_type", "inference")
-                self._memory.believe(
-                    claim=_get(payload, "claim"),
-                    evidence_items=evidence_items,
-                    belief_type=raw_bt
-                    if hasattr(raw_bt, "value")
-                    else BeliefType(raw_bt),
-                    tags=_get(payload, "tags", []),
-                    source_agent=frame.source_agent,
-                )
-                beliefs_created += 1
-
-        if revisions:
-            for rev in revisions:
-                raw_ev = _get(rev, "evidence", {})
-                raw_pol = _get(raw_ev, "polarity", "supports")
-                ev = EvidenceInput(
-                    source_ref=_get(raw_ev, "source_ref", ""),
-                    content=_get(raw_ev, "content", ""),
-                    polarity=raw_pol.value if hasattr(raw_pol, "value") else raw_pol,
-                    weight=_get(raw_ev, "weight", 0.8),
-                    reliability=_get(raw_ev, "reliability", 0.7),
-                    scope=_get(raw_ev, "scope", None),
-                )
-                bid = _get(rev, "belief_id")
-                if isinstance(bid, str):
-                    bid = UUID(bid)
-                self._memory.revise(bid, ev)
-                beliefs_revised += 1
+        beliefs_created = self._apply_new_beliefs(new_beliefs or [], frame.source_agent)
+        beliefs_revised = self._apply_revisions(revisions or [])
 
         frame.status = FrameStatus.COMMITTED
         return FrameCommitResult(

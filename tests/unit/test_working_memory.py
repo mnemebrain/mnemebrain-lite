@@ -683,6 +683,43 @@ class TestCommitFrame:
         result = manager.commit_frame(frame.id, new_beliefs=[payload])
         assert result.beliefs_created == 1
 
+    def test_commit_with_dict_payloads(self, manager):
+        """Covers the dict branch of _get() helper (line 197)."""
+        frame = manager.open_frame(query_id=uuid4())
+        payload = {
+            "claim": "dict-based belief",
+            "evidence": [
+                {
+                    "source_ref": "dict_src",
+                    "content": "dict evidence",
+                    "polarity": "supports",
+                    "weight": 0.8,
+                    "reliability": 0.7,
+                }
+            ],
+            "belief_type": "inference",
+            "tags": [],
+        }
+        result = manager.commit_frame(frame.id, new_beliefs=[payload])
+        assert result.beliefs_created == 1
+
+    def test_commit_revision_with_string_belief_id(self, manager, memory_with_belief):
+        """Covers the str-to-UUID branch for belief_id (line 242)."""
+        mem, bid, claim = memory_with_belief
+        frame = manager.open_frame(query_id=uuid4())
+        rev = {
+            "belief_id": str(bid),
+            "evidence": {
+                "source_ref": "rev_src",
+                "content": "revision evidence",
+                "polarity": "supports",
+                "weight": 0.8,
+                "reliability": 0.7,
+            },
+        }
+        result = manager.commit_frame(frame.id, revisions=[rev])
+        assert result.beliefs_revised == 1
+
 
 # ---------------------------------------------------------------------------
 # close_frame

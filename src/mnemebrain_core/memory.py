@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import UUID
@@ -17,6 +18,8 @@ from mnemebrain_core.models import (
 )
 from mnemebrain_core.providers.base import EmbeddingProvider, EvidenceInput
 from mnemebrain_core.store import KuzuGraphStore
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -55,10 +58,20 @@ class BeliefMemory:
         self._embedder = embedding_provider
         if self._embedder is None:
             self._embedder = self._auto_detect_embedder()
+        if self._embedder is None:
+            logger.warning(
+                "No embedding provider available. Running in degraded mode: "
+                "believe/explain/search will use text matching instead of "
+                "semantic similarity. Install sentence-transformers, set "
+                "EMBEDDING_BASE_URL+EMBEDDING_MODEL, or set OPENAI_API_KEY "
+                "to enable embeddings."
+            )
 
     @staticmethod
     def _auto_detect_embedder() -> EmbeddingProvider | None:
         """Try available embedding providers in order of preference."""
+        import os
+
         # 1. Local sentence-transformers (no API key needed)
         try:
             from mnemebrain_core.providers.embeddings.sentence_transformers import (
@@ -68,10 +81,21 @@ class BeliefMemory:
             return SentenceTransformerProvider()
         except ImportError:
             pass
-        # 2. OpenAI API (requires OPENAI_API_KEY)
-        try:
-            import os
+        # 2. OpenAI-compatible server (Ollama, LM Studio, vLLM, etc.)
+        base_url = os.environ.get("EMBEDDING_BASE_URL")
+        model = os.environ.get("EMBEDDING_MODEL")
+        if base_url and model:
+            from mnemebrain_core.providers.embeddings.openai_compatible import (
+                OpenAICompatibleProvider,
+            )
 
+            return OpenAICompatibleProvider(
+                base_url=base_url,
+                model=model,
+                api_key=os.environ.get("EMBEDDING_API_KEY"),
+            )
+        # 3. OpenAI API (requires OPENAI_API_KEY)
+        try:
             if os.environ.get("OPENAI_API_KEY"):
                 from mnemebrain_core.providers.embeddings.openai import (
                     OpenAIEmbeddingProvider,
@@ -80,17 +104,7 @@ class BeliefMemory:
                 return OpenAIEmbeddingProvider()
         except ImportError:
             pass
-        return None  # Will fail at use-time with clear message
-
-    def _get_embedder(self) -> EmbeddingProvider:
-        if self._embedder is None:
-            raise ImportError(
-                "No embedding provider available. "
-                "Install with: pip install mnemebrain-lite[embeddings] "
-                "(local) or pip install mnemebrain-lite[openai] and set "
-                "OPENAI_API_KEY"
-            )
-        return self._embedder
+        return None  # Degraded mode — text matching only
 
     def believe(
         self,
@@ -101,8 +115,14 @@ class BeliefMemory:
         source_agent: str = "",
     ) -> BeliefResult:
         """Store a new belief with evidence. Merges if similar belief exists."""
-        embedding = self._get_embedder().embed(claim)
-        existing = self._store.find_similar(embedding, threshold=0.92)
+        embedding: list[float]
+        if self._embedder is not None:
+            embedding = self._embedder.embed(claim)
+            existing = self._store.find_similar(embedding, threshold=0.92)
+        else:
+            embedding = []
+            exact = self._store.find_by_claim(claim)
+            existing = [(exact, 1.0)] if exact else []
 
         if existing:
             belief = existing[0][0]
@@ -175,8 +195,11 @@ class BeliefMemory:
 
     def explain(self, claim: str) -> ExplanationResult | None:
         """Return full justification chain for a belief."""
-        embedding = self._get_embedder().embed(claim)
-        matches = self._store.find_similar(embedding, threshold=0.8)
+        if self._embedder is not None:
+            embedding = self._embedder.embed(claim)
+            matches = self._store.find_similar(embedding, threshold=0.8)
+        else:
+            matches = []
 
         if not matches:
             exact = self._store.find_by_claim(claim)
@@ -240,8 +263,11 @@ class BeliefMemory:
         """
         from mnemebrain_core.engine import apply_conflict_policy, rank_score
 
-        embedding = self._get_embedder().embed(query)
-        raw_matches = self._store.find_similar(embedding, threshold=0.3)
+        if self._embedder is not None:
+            embedding = self._embedder.embed(query)
+            raw_matches = self._store.find_similar(embedding, threshold=0.3)
+        else:
+            raw_matches = self._store.find_by_text(query, limit=limit)
 
         scored = [
             (

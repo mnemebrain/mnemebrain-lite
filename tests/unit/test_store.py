@@ -265,3 +265,38 @@ class TestKuzuGraphStore:
         """close() is a no-op but must be reachable for coverage."""
         # Should not raise
         store.close()
+
+    # ------------------------------------------------------------------
+    # find_by_text (substring search)
+    # ------------------------------------------------------------------
+
+    def test_find_by_text_found(self, store: KuzuGraphStore):
+        """find_by_text returns beliefs matching substring."""
+        b = Belief(claim="The quick brown fox jumps over the lazy dog")
+        store.upsert(b)
+        results = store.find_by_text("brown fox")
+        assert len(results) == 1
+        assert results[0][0].id == b.id
+        assert results[0][1] > 0
+
+    def test_find_by_text_case_insensitive(self, store: KuzuGraphStore):
+        """find_by_text is case-insensitive."""
+        b = Belief(claim="Python is great")
+        store.upsert(b)
+        results = store.find_by_text("PYTHON")
+        assert len(results) == 1
+        assert results[0][0].id == b.id
+
+    def test_find_by_text_no_match(self, store: KuzuGraphStore):
+        """find_by_text returns empty when no substring match."""
+        b = Belief(claim="apples and oranges")
+        store.upsert(b)
+        results = store.find_by_text("bananas")
+        assert results == []
+
+    def test_find_by_text_limit(self, store: KuzuGraphStore):
+        """find_by_text respects the limit parameter."""
+        for i in range(5):
+            store.upsert(Belief(claim=f"belief number {i}"))
+        results = store.find_by_text("belief", limit=2)
+        assert len(results) == 2

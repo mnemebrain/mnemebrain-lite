@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from types import ModuleType
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -54,6 +54,77 @@ class TestSentenceTransformerProvider:
         zero = [0.0] * len(vec)
         sim = st_provider.similarity(vec, zero)
         assert sim == pytest.approx(0.0, abs=0.01)
+
+
+# --- SentenceTransformer provider tests (mocked, no package needed) ---
+
+
+class TestSentenceTransformerProviderMocked:
+    """Tests that exercise the provider code with a mocked SentenceTransformer."""
+
+    @pytest.fixture(autouse=True)
+    def _mock_sentence_transformers(self):
+        import numpy as np
+
+        fake_st_mod = ModuleType("sentence_transformers")
+        mock_model = MagicMock()
+        mock_model.encode.return_value = np.array([0.6, 0.8, 0.0])
+
+        fake_st_mod.SentenceTransformer = MagicMock(return_value=mock_model)
+        sys.modules["sentence_transformers"] = fake_st_mod
+
+        mod_name = "mnemebrain_core.providers.embeddings.sentence_transformers"
+        if mod_name in sys.modules:
+            del sys.modules[mod_name]
+
+        yield
+
+        del sys.modules["sentence_transformers"]
+        if mod_name in sys.modules:
+            del sys.modules[mod_name]
+
+    def _make_provider(self):
+        from mnemebrain_core.providers.embeddings.sentence_transformers import (
+            SentenceTransformerProvider,
+        )
+
+        return SentenceTransformerProvider()
+
+    def test_embed_returns_list_of_floats(self):
+        provider = self._make_provider()
+        result = provider.embed("hello")
+        assert isinstance(result, list)
+        assert all(isinstance(v, float) for v in result)
+        assert result == [pytest.approx(0.6), pytest.approx(0.8), pytest.approx(0.0)]
+
+    def test_similarity_dot_product(self):
+        provider = self._make_provider()
+        a = [1.0, 0.0, 0.0]
+        b = [0.0, 1.0, 0.0]
+        assert provider.similarity(a, b) == pytest.approx(0.0, abs=0.001)
+
+    def test_similarity_identical(self):
+        provider = self._make_provider()
+        vec = [0.6, 0.8]
+        assert provider.similarity(vec, vec) == pytest.approx(1.0, abs=0.001)
+
+    def test_default_model_name(self):
+        from mnemebrain_core.providers.embeddings.sentence_transformers import (
+            SentenceTransformerProvider,
+        )
+        import sentence_transformers
+
+        SentenceTransformerProvider()
+        sentence_transformers.SentenceTransformer.assert_called_with("all-MiniLM-L6-v2")
+
+    def test_custom_model_name(self):
+        from mnemebrain_core.providers.embeddings.sentence_transformers import (
+            SentenceTransformerProvider,
+        )
+        import sentence_transformers
+
+        SentenceTransformerProvider("custom-model")
+        sentence_transformers.SentenceTransformer.assert_called_with("custom-model")
 
 
 # --- OpenAI provider tests (mocked, no API key needed) ---
@@ -152,3 +223,79 @@ class TestOpenAIEmbeddingProvider:
 
         provider = OpenAIEmbeddingProvider()
         assert provider._model == "text-embedding-3-small"
+
+
+# --- OpenAI-compatible provider tests (mocked, no server needed) ---
+
+
+class TestOpenAICompatibleProvider:
+    def _make_provider(self, api_key=None):
+        from mnemebrain_core.providers.embeddings.openai_compatible import (
+            OpenAICompatibleProvider,
+        )
+
+        return OpenAICompatibleProvider(
+            base_url="http://localhost:11434/v1",
+            model="nomic-embed-text",
+            api_key=api_key,
+        )
+
+    def test_embed_returns_vector(self):
+        """embed() returns the vector from a mocked response."""
+        provider = self._make_provider()
+        expected = [0.1, 0.2, 0.3, 0.4]
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": [{"embedding": expected}]}
+        with patch.object(provider._client, "post", return_value=mock_response):
+            result = provider.embed("hello")
+        assert result == expected
+
+    def test_embed_sends_correct_payload(self):
+        """embed() sends the right JSON body."""
+        provider = self._make_provider()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": [{"embedding": [0.1]}]}
+        with patch.object(
+            provider._client, "post", return_value=mock_response
+        ) as mock_post:
+            provider.embed("test text")
+        mock_post.assert_called_once_with(
+            "/embeddings",
+            json={"input": "test text", "model": "nomic-embed-text"},
+        )
+
+    def test_embed_with_api_key(self):
+        """When api_key is set, Authorization header is included."""
+        provider = self._make_provider(api_key="sk-test-key")
+        assert provider._client.headers["authorization"] == "Bearer sk-test-key"
+
+    def test_embed_without_api_key(self):
+        """When no api_key, no Authorization header."""
+        provider = self._make_provider()
+        assert "authorization" not in provider._client.headers
+
+    def test_embed_error_response(self):
+        """Non-200 response raises RuntimeError."""
+        provider = self._make_provider()
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        with patch.object(provider._client, "post", return_value=mock_response):
+            with pytest.raises(RuntimeError, match="Embedding request failed"):
+                provider.embed("hello")
+
+    def test_similarity_identical(self):
+        """similarity() on identical vectors returns 1.0."""
+        provider = self._make_provider()
+        vec = [0.6, 0.8]
+        assert provider.similarity(vec, vec) == pytest.approx(1.0, abs=0.001)
+
+    def test_similarity_zero_vector(self):
+        """similarity() with zero vector returns 0.0."""
+        provider = self._make_provider()
+        vec = [0.5, 0.5]
+        zero = [0.0, 0.0]
+        assert provider.similarity(vec, zero) == 0.0
+        assert provider.similarity(zero, vec) == 0.0

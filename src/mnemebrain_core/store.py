@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any, cast
 from uuid import UUID
 
 import kuzu
@@ -21,6 +22,27 @@ class KuzuGraphStore:
         self._db = kuzu.Database(db_path, **kwargs)
         self._conn = kuzu.Connection(self._db)
         self._init_schema()
+
+    def _query(
+        self, statement: str, parameters: dict[str, Any] | None = None
+    ) -> kuzu.QueryResult:
+        """Execute a single Cypher statement and return the QueryResult.
+
+        Kuzu's ``execute`` is typed as returning ``QueryResult | list[QueryResult]``
+        but only returns a list when multiple statements are passed.  This helper
+        narrows the type for single-statement calls used throughout the store.
+        """
+        kwargs: dict[str, Any] = {}
+        if parameters is not None:
+            kwargs["parameters"] = parameters
+        result = self._conn.execute(statement, **kwargs)
+        assert isinstance(result, kuzu.QueryResult)
+        return result
+
+    @staticmethod
+    def _next_row(result: kuzu.QueryResult) -> list[Any]:
+        """Get the next row as a list (Kuzu types ``list | dict``)."""
+        return cast(list[Any], result.get_next())
 
     def _init_schema(self) -> None:
         """Create node/rel tables if they don't exist."""
@@ -69,24 +91,24 @@ class KuzuGraphStore:
 
     def get(self, belief_id: UUID) -> Belief | None:
         """Retrieve a belief by ID."""
-        result = self._conn.execute(
+        result = self._query(
             "MATCH (b:Belief {id: $id}) RETURN b.data",
             parameters={"id": str(belief_id)},
         )
         if not result.has_next():
             return None
-        row = result.get_next()
+        row = self._next_row(result)
         belief_data = json.loads(row[0])
 
         # Load evidence
-        ev_result = self._conn.execute(
+        ev_result = self._query(
             "MATCH (b:Belief {id: $id})-[:HAS_EVIDENCE]->(e:EvidenceNode) "
             "RETURN e.data",
             parameters={"id": str(belief_id)},
         )
         evidence_list = []
         while ev_result.has_next():
-            ev_row = ev_result.get_next()
+            ev_row = self._next_row(ev_result)
             evidence_list.append(json.loads(ev_row[0]))
 
         belief_data["evidence"] = evidence_list
@@ -94,13 +116,13 @@ class KuzuGraphStore:
 
     def get_evidence(self, evidence_id: UUID) -> Evidence | None:
         """Retrieve a single evidence item by ID."""
-        result = self._conn.execute(
+        result = self._query(
             "MATCH (e:EvidenceNode {id: $id}) RETURN e.data",
             parameters={"id": str(evidence_id)},
         )
         if not result.has_next():
             return None
-        row = result.get_next()
+        row = self._next_row(result)
         return Evidence.model_validate(json.loads(row[0]))
 
     def update_evidence(self, evidence: Evidence) -> None:
@@ -113,13 +135,13 @@ class KuzuGraphStore:
 
     def find_beliefs_using(self, evidence_id: UUID) -> list[Belief]:
         """Find all beliefs that reference a given evidence item."""
-        result = self._conn.execute(
+        result = self._query(
             "MATCH (b:Belief)-[:HAS_EVIDENCE]->(e:EvidenceNode {id: $eid}) RETURN b.id",
             parameters={"eid": str(evidence_id)},
         )
         beliefs = []
         while result.has_next():
-            row = result.get_next()
+            row = self._next_row(result)
             belief = self.get(UUID(row[0]))
             if belief:
                 beliefs.append(belief)
@@ -129,7 +151,7 @@ class KuzuGraphStore:
         self, embedding: list[float], threshold: float = 0.92
     ) -> list[tuple[Belief, float]]:
         """Find beliefs with similar embeddings. Returns (belief, similarity) pairs."""
-        result = self._conn.execute(
+        result = self._query(
             "MATCH (b:Belief) WHERE size(b.embedding) > 0 RETURN b.id, b.embedding"
         )
         matches: list[tuple[Belief, float]] = []
@@ -139,7 +161,7 @@ class KuzuGraphStore:
             return []
 
         while result.has_next():
-            row = result.get_next()
+            row = self._next_row(result)
             stored_emb = np.array(row[1])
             if stored_emb.shape != query_vec.shape:
                 continue  # skip embeddings from a different provider
@@ -156,10 +178,10 @@ class KuzuGraphStore:
 
     def list_beliefs(self) -> list[Belief]:
         """List all beliefs in the store."""
-        result = self._conn.execute("MATCH (b:Belief) RETURN b.id")
+        result = self._query("MATCH (b:Belief) RETURN b.id")
         beliefs = []
         while result.has_next():
-            row = result.get_next()
+            row = self._next_row(result)
             belief = self.get(UUID(row[0]))
             if belief:
                 beliefs.append(belief)
@@ -193,11 +215,33 @@ class KuzuGraphStore:
         total = len(filtered)
         return filtered[offset : offset + limit], total
 
+    def find_by_text(self, query: str, limit: int = 10) -> list[tuple[Belief, float]]:
+        """Find beliefs by case-insensitive substring match on claim text.
+
+        Returns (belief, score) pairs sorted by relevance score.
+        """
+        result = self._query("MATCH (b:Belief) RETURN b.id, b.data")
+        matches: list[tuple[Belief, float]] = []
+        query_lower = query.lower()
+
+        while result.has_next():
+            row = self._next_row(result)
+            data = json.loads(row[1])
+            claim = data.get("claim", "")
+            if query_lower in claim.lower():
+                score = len(query) / len(claim) if claim else 0.0
+                belief = self.get(UUID(row[0]))
+                if belief:
+                    matches.append((belief, score))
+
+        matches.sort(key=lambda x: x[1], reverse=True)
+        return matches[:limit]
+
     def find_by_claim(self, claim: str) -> Belief | None:
         """Find a belief by exact claim match."""
-        result = self._conn.execute("MATCH (b:Belief) RETURN b.id, b.data")
+        result = self._query("MATCH (b:Belief) RETURN b.id, b.data")
         while result.has_next():
-            row = result.get_next()
+            row = self._next_row(result)
             data = json.loads(row[1])
             if data.get("claim") == claim:
                 return self.get(UUID(row[0]))
