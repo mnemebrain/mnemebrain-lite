@@ -176,7 +176,7 @@ class WorkingMemoryManager:
             return obj.get(key, default)
         return getattr(obj, key, default)
 
-    def _build_evidence_input(self, raw: Any) -> "EvidenceInput":
+    def _build_evidence_input(self, raw: Any) -> Any:
         """Build an EvidenceInput from a raw dict or schema object."""
         from mnemebrain_core.providers.base import EvidenceInput
 
