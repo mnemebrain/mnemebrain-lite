@@ -4,7 +4,7 @@
 > **Base URL:** `http://localhost:8000`
 > **Content-Type:** `application/json`
 
-MnemeBrain Lite is a lightweight belief memory system for LLM agents. It provides four core operations — **believe**, **retract**, **explain**, **revise** — backed by Belnap's four-valued logic and an append-only evidence ledger.
+MnemeBrain Lite is a lightweight belief memory system for LLM agents. It provides core operations — **believe**, **retract**, **explain**, **revise**, **search**, **list** — backed by Belnap's four-valued logic and an append-only evidence ledger. WorkingMemoryFrame provides active context buffering for multi-step reasoning.
 
 > **Lite mode:** On platforms where `sentence-transformers` is unavailable (e.g. Intel Mac — torch 2.3+ has no x86_64 wheels), `believe` and `explain` require a custom `EmbeddingProvider`. Without one, these endpoints return **501 Not Implemented**. `health`, `retract`, and `revise` always work.
 
@@ -38,6 +38,27 @@ from mnemebrain_core.memory import BeliefMemory
 from mnemebrain_core.providers.base import EvidenceInput
 
 mem = BeliefMemory(db_path="./my_data")
+
+# Store a belief
+result = mem.believe(
+    claim="user is vegetarian",
+    evidence_items=[
+        EvidenceInput(
+            source_ref="msg_12",
+            content="They said no meat please",
+            polarity="supports",
+            weight=0.8,
+            reliability=0.9,
+        )
+    ],
+)
+print(result.truth_state)  # TruthState.TRUE
+
+# Explain a belief
+explanation = mem.explain("user is vegetarian")
+
+# Search beliefs
+results = mem.search(query="dietary preferences", limit=5)
 
 # Revise with new evidence
 mem.revise(

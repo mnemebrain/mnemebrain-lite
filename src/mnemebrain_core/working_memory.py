@@ -146,7 +146,10 @@ class WorkingMemoryManager:
         # Find the belief to get its full object
         beliefs, _ = self._memory.list_beliefs(limit=1000)
         for b in beliefs:
-            if b.claim == result.claim and b.id not in frame.belief_snapshots:
+            if b.claim == result.claim:
+                # Return existing snapshot if already in frame
+                if b.id in frame.belief_snapshots:
+                    return frame.belief_snapshots[b.id]
                 frame.active_beliefs.append(b.id)
                 snapshot = self._snapshot_belief(b)
                 frame.belief_snapshots[b.id] = snapshot

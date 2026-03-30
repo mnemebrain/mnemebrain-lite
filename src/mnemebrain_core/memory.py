@@ -181,7 +181,11 @@ class BeliefMemory:
             )
             belief.confidence = compute_confidence(belief.evidence, belief.belief_type)
             belief.last_revised = datetime.now(timezone.utc)
-            self._store.upsert(belief)
+
+            # Re-embed to preserve searchability (upsert without embedding
+            # would overwrite with empty list, making belief unfindable).
+            embedding = self._embedder.embed(belief.claim) if self._embedder else None
+            self._store.upsert(belief, embedding=embedding)
 
             results.append(
                 BeliefResult(
@@ -208,13 +212,19 @@ class BeliefMemory:
             matches = [(exact, 1.0)]
 
         belief = matches[0][0]
+
+        # Recompute truth_state and confidence with current-time decay
+        # (the persisted values may be stale if time has elapsed).
+        truth_state = compute_truth_state(belief.evidence, belief.belief_type)
+        confidence = compute_confidence(belief.evidence, belief.belief_type)
+
         active = [e for e in belief.evidence if e.valid]
         expired = [e for e in belief.evidence if not e.valid]
 
         return ExplanationResult(
             claim=belief.claim,
-            truth_state=belief.truth_state,
-            confidence=belief.confidence,
+            truth_state=truth_state,
+            confidence=confidence,
             supporting=[e for e in active if e.polarity == Polarity.SUPPORTS],
             attacking=[e for e in active if e.polarity == Polarity.ATTACKS],
             expired=expired,
@@ -241,7 +251,9 @@ class BeliefMemory:
         belief.confidence = compute_confidence(belief.evidence, belief.belief_type)
         belief.last_revised = datetime.now(timezone.utc)
 
-        self._store.upsert(belief)
+        # Re-embed to preserve searchability.
+        embedding = self._embedder.embed(belief.claim) if self._embedder else None
+        self._store.upsert(belief, embedding=embedding)
 
         return BeliefResult(
             id=belief.id,

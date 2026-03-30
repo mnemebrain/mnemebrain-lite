@@ -1,0 +1,12 @@
+.venv/
+.git/
+.github/
+tests/
+docs/
+__pycache__/
+*.pyc
+.env
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+mnemebrain_data/
